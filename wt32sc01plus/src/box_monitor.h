@@ -10,6 +10,7 @@ struct BoxSlotView {
   bool loaded = false;
   bool active = false;
   String material;
+  String qidiVendor;        // "Gen." for Generic, else as reported
   String colorHex;
   int spoolNumber = -1;     // Spoolman spool number from the tag, -1 = none
   String spoolmanVendor;    // empty if no vendor is linked or Spoolman does not know it

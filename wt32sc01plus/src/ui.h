@@ -68,6 +68,9 @@ void uiBoxShowState(const char *text, bool error);
 // [slots] == nullptr clears the rows.
 void uiBoxShowSlots(int firstSlot, const BoxSlotView *slots);
 
+// The text of the status line on the main screen.
+const char *uiStatusText();
+
 // Updates the status line on the main screen.
 void uiSetStatus(const char *text);
 

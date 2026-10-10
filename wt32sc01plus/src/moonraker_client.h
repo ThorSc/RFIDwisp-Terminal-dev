@@ -16,6 +16,7 @@ struct QidiSlot {
   bool loaded = false;    // the slot holds filament
   bool active = false;    // the slot feeds the extruder right now
   String material;        // e.g. "PLA"; empty for an empty slot
+  String vendor;          // QIDI vendor as reported, e.g. "Generic" or "QIDI"
   String colorHex;        // "#RRGGBB" as reported; empty for an empty slot
   int spoolNumber = -1;   // Spoolman spool number from the tag (rfid_bridge), -1 = none
   int internalVendorId = -1; // Spoolman vendor id from the tag, -1 = none

@@ -46,6 +46,7 @@ static void resolve(const Request &request, BoxResult &out) {
     view.loaded = slot.loaded;
     view.active = slot.active;
     view.material = slot.material;
+    view.qidiVendor = slot.vendor.equalsIgnoreCase("generic") ? String("Gen.") : slot.vendor;
     view.colorHex = slot.colorHex;
     view.spoolNumber = slot.spoolNumber;
     if (slot.internalVendorId > 0 && vendors.count(slot.internalVendorId)) {

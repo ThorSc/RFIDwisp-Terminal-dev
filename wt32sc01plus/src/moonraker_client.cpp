@@ -76,6 +76,7 @@ QidiBoxResult moonrakerReadBox(const String &address, int box) {
   controller["slots"]["states"] = true;
   JsonObject material = controller["slots"]["materials"]["*"].to<JsonObject>();
   material["filament"]["filament"] = true;
+  material["vendor"] = true;
   material["color"] = true;
   filter["result"]["status"]["rfid_bridge"]["last_raw"] = true;
 
@@ -143,6 +144,7 @@ QidiBoxResult moonrakerReadBox(const String &address, int box) {
       slot.loaded = true;
       slot.active = state == 2;
       slot.material = textOrEmpty(data["filament"]["filament"]);
+      slot.vendor = textOrEmpty(data["vendor"]);
       slot.colorHex = textOrEmpty(data["color"]);
 
       uint8_t raw[16];

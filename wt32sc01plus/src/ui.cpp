@@ -33,7 +33,7 @@ static lv_obj_t *lblStatus;
 
 // QIDI box overview on the main screen
 struct SlotRow {
-  lv_obj_t *dot, *lblSlot, *lblMaterial, *swatch, *lblColor, *lblNumber, *lblVendor, *lblWeight;
+  lv_obj_t *dot, *lblSlot, *lblMaterial, *lblQidiVendor, *swatch, *lblNumber, *lblVendor, *lblWeight;
 };
 static lv_obj_t *ddMainPrinter, *lblMainPrinter, *ddMainBox, *lblBoxState, *btnBoxRefresh;
 static SlotRow slotRows[4];
@@ -851,8 +851,9 @@ static void buildBoxOverview() {
 
   // Column captions
   struct Caption { StrId text; int x; };
-  const Caption captions[] = {{StrId::ColMaterial, 88}, {StrId::ColColor, 160}, {StrId::ColNumber, 248},
-                              {StrId::ColSpoolmanVendor, 292}};
+  // The QIDI vendor and the colour swatch need no caption.
+  const Caption captions[] = {{StrId::ColSlot, 14}, {StrId::ColMaterial, 58}, {StrId::ColNumber, 224},
+                              {StrId::ColSpoolmanVendor, 268}};
   for (const Caption &caption : captions) {
     lv_obj_t *label = lv_label_create(scrMain);
     lv_label_set_text(label, T(caption.text));
@@ -884,21 +885,21 @@ static void buildBoxOverview() {
     lv_obj_align(row.dot, LV_ALIGN_LEFT_MID, 6, 0);
     lv_obj_clear_flag(row.dot, LV_OBJ_FLAG_SCROLLABLE);
 
-    row.lblSlot = makeSlotLabel(box, 24, 52, LV_LABEL_LONG_CLIP);
-    row.lblMaterial = makeSlotLabel(box, 78, 68, LV_LABEL_LONG_DOT);
+    row.lblSlot = makeSlotLabel(box, 24, 18, LV_LABEL_LONG_CLIP);
+    row.lblMaterial = makeSlotLabel(box, 48, 78, LV_LABEL_LONG_DOT);
+    row.lblQidiVendor = makeSlotLabel(box, 130, 50, LV_LABEL_LONG_DOT);
 
     row.swatch = lv_obj_create(box);
     lv_obj_set_size(row.swatch, 20, 20);
     lv_obj_set_style_radius(row.swatch, 3, 0);
     lv_obj_set_style_border_width(row.swatch, 1, 0);
     lv_obj_set_style_border_color(row.swatch, lv_color_hex(0x707070), 0);
-    lv_obj_align(row.swatch, LV_ALIGN_LEFT_MID, 150, 0);
+    lv_obj_align(row.swatch, LV_ALIGN_LEFT_MID, 186, 0);
     lv_obj_clear_flag(row.swatch, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(row.swatch, LV_OBJ_FLAG_HIDDEN);
-    row.lblColor = makeSlotLabel(box, 176, 64, LV_LABEL_LONG_CLIP);
 
-    row.lblNumber = makeSlotLabel(box, 238, 44, LV_LABEL_LONG_CLIP);
-    row.lblVendor = makeSlotLabel(box, 282, 100, LV_LABEL_LONG_DOT);
+    row.lblNumber = makeSlotLabel(box, 214, 44, LV_LABEL_LONG_CLIP);
+    row.lblVendor = makeSlotLabel(box, 258, 122, LV_LABEL_LONG_DOT);
     row.lblWeight = makeSlotLabel(box, 384, 68, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_align(row.lblWeight, LV_TEXT_ALIGN_RIGHT, 0);
   }
@@ -953,8 +954,9 @@ void uiBoxShowSlots(int firstSlot, const BoxSlotView *slots) {
                                                    : kSlotEmptyColor,
                               0);
     // The slot within its box: 0-3, as in the app.
-    lv_label_set_text(row.lblSlot, (String(T(StrId::SlotLabel)) + " " + String((firstSlot + i) % 4)).c_str());
+    lv_label_set_text(row.lblSlot, String((firstSlot + i) % 4).c_str());
     lv_label_set_text(row.lblMaterial, slot ? slot->material.c_str() : "");
+    lv_label_set_text(row.lblQidiVendor, slot ? slot->qidiVendor.c_str() : "");
 
     const char *hex = slot ? slot->colorHex.c_str() : "";
     bool isColor = hex[0] == '#' && strlen(hex) == 7;
@@ -964,8 +966,6 @@ void uiBoxShowSlots(int firstSlot, const BoxSlotView *slots) {
     } else {
       lv_obj_add_flag(row.swatch, LV_OBJ_FLAG_HIDDEN);
     }
-    lv_label_set_text(row.lblColor, hex);
-    lv_obj_align(row.lblColor, LV_ALIGN_LEFT_MID, isColor ? 176 : 150, 0);
 
     lv_label_set_text(row.lblNumber, slot && slot->spoolNumber > 0 ? String(slot->spoolNumber).c_str() : "");
     lv_label_set_text(row.lblVendor, slot ? slot->spoolmanVendor.c_str() : "");
@@ -997,17 +997,19 @@ static void buildMainScreen() {
 
   lblStatus = lv_label_create(scrMain);
   lv_label_set_text(lblStatus, T(StrId::Ready));
-  lv_obj_set_width(lblStatus, SCREEN_WIDTH - 40);
-  lv_label_set_long_mode(lblStatus, LV_LABEL_LONG_WRAP);
+  // Room for two lines at the bottom edge; a longer text ends in "...".
+  lv_obj_set_size(lblStatus, SCREEN_WIDTH - 40, 34);
+  lv_label_set_long_mode(lblStatus, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_align(lblStatus, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(lblStatus, LV_ALIGN_BOTTOM_MID, 0, -6);
+  lv_obj_align(lblStatus, LV_ALIGN_BOTTOM_MID, 0, -4);
 
   // A tag put on the reader is read automatically and opens the edit screen;
   // the button opens it as well, with empty fields, whether a tag lies on the
   // reader or not.
   lv_obj_t *btn = lv_btn_create(scrMain);
-  lv_obj_set_size(btn, 240, 44);
-  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -34);
+  // Between the last slot row (ends at y = 230) and the two-line status (starts at y = 282).
+  lv_obj_set_size(btn, 240, 40);
+  lv_obj_align(btn, LV_ALIGN_TOP_MID, 0, 235);
   lv_obj_add_event_cb(btn, editButtonCb, LV_EVENT_CLICKED, nullptr);
   lv_obj_t *label = lv_label_create(btn);
   lv_label_set_text(label, T(StrId::EditTag));
@@ -1269,6 +1271,8 @@ void uiInit() {
 bool uiIsMainScreenIdle() {
   return lv_scr_act() == scrMain && lv_obj_get_child_cnt(lv_layer_top()) == 0;
 }
+
+const char *uiStatusText() { return lv_label_get_text(lblStatus); }
 
 void uiSetStatus(const char *text) {
   lv_label_set_text(lblStatus, text);

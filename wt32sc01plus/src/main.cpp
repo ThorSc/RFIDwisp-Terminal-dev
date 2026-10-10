@@ -361,6 +361,7 @@ static void pollForTag() {
 // ---------------------------------------------------------------------------
 
 static int boxNumber = 1;      // the box shown, 1-4
+static String boxStatusText;   // the box error the status line shows, if it still does
 static String boxSignature;    // printer + Spoolman the last request was made for
 
 static int selectedPrinterIndex() {
@@ -391,7 +392,15 @@ static void showBoxPrinters() {
   uiBoxShowPrinters(names, index, info.c_str());
 }
 
+// Takes the box error off the status line once it is out of date (a new
+// request is made); a message that replaced it in the meantime stays.
+static void clearBoxStatus() {
+  if (boxStatusText.length() > 0 && boxStatusText == uiStatusText()) uiSetStatus(T(StrId::StatusHoldTag));
+  boxStatusText = "";
+}
+
 static void requestBoxData() {
+  clearBoxStatus();
   boxSignature = boxRequestSignature();
   int index = selectedPrinterIndex();
   if (index < 0) {
@@ -418,9 +427,9 @@ static void pollBoxResult() {
     // say so, or the user starts looking for one.
     uiBoxShowState(T(result.unsupported ? StrId::PrinterNotSupported : StrId::PrinterNotConnected), true);
     if (uiIsMainScreenIdle()) {
-      uiSetStatus(result.unsupported
-                      ? T(StrId::PrinterNotSupportedInfo)
-                      : (String(T(StrId::BoxError)) + " " + result.error).c_str());
+      boxStatusText = result.unsupported ? String(T(StrId::PrinterNotSupportedInfo))
+                                         : String(T(StrId::BoxError)) + " " + result.error;
+      uiSetStatus(boxStatusText.c_str());
     }
     return;
   }
