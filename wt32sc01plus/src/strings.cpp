@@ -71,6 +71,20 @@ static const char *const keys[(int)StrId::Count] = {
   "field_required",
   "address_invalid",
   "edit_tag",
+  "box",
+  "slot",
+  "col_material",
+  "col_color",
+  "col_number",
+  "col_spoolman_vendor",
+  "col_weight",
+  "no_printer_configured",
+  "printer_checking",
+  "printer_not_connected",
+  "box_error",
+  "no_box",
+  "printer_not_supported",
+  "printer_not_supported_info",
 };
 
 static const char *const defaultStrings[(int)StrId::Count] = {
@@ -140,6 +154,20 @@ static const char *const defaultStrings[(int)StrId::Count] = {
   "Name is required.",
   "Invalid address (e.g. http://192.168.1.50:7125).",
   "Edit tag",
+  "Box",
+  "Slot",
+  "Material",
+  "Color",
+  "No.",
+  "Spoolman vendor",
+  "Weight",
+  "No printer configured - add one in Settings.",
+  "Checking printer...",
+  "not connected",
+  "QIDI box data not available:",
+  "No QIDI box connected.",
+  "not supported",
+  "The printer is connected, but not supported: it has no QIDI box data (QIDI Plus4 / Max4 only).",
 };
 // clang-format on
 

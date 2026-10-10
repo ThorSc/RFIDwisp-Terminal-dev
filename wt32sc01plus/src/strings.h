@@ -77,6 +77,20 @@ enum class StrId {
   FieldRequired,
   AddressInvalid,
   EditTag,
+  BoxLabel,
+  SlotLabel,
+  ColMaterial,
+  ColColor,
+  ColNumber,
+  ColSpoolmanVendor,
+  ColWeight,
+  NoPrinterConfigured,
+  PrinterChecking,
+  PrinterNotConnected,
+  BoxError,
+  NoBox,
+  PrinterNotSupported,
+  PrinterNotSupportedInfo,
   Count // sentinel, not a real string
 };
 

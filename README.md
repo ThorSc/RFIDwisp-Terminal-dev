@@ -159,6 +159,12 @@ No firmware rebuild needed to change or remove the override afterwards.
 - **Write tag** (edit screen): writes the encoded 16 bytes to block 4 and
   reads them back to confirm. **Read tag** on the same screen reads another
   tag without going back to the main screen.
+- **QIDI box overview** on the main screen: the four slots of a box of the
+  selected printer (state, slot, material, colour, spool number, Spoolman
+  vendor, remaining weight), read from Moonraker's `multi_color_controller`
+  and the `rfid_bridge` module. Printer and box drop-downs appear if there is
+  more than one of each. The QIDI Q2 (no `multi_color_controller`) is not
+  supported.
 - **Settings screen**, in tabs like the app: *General* (screen sleep, check
   for firmware updates, firmware version), *WiFi* (status, "Reconfigure
   network"), *Printer* (printers with name and Moonraker address) and

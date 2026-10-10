@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <map>
 #include <vector>
 
 // Minimal Spoolman REST client (see spoolman_api.dart): enough to list
@@ -38,6 +39,10 @@ struct SpoolmanResult {
 SpoolmanResult spoolmanGetVendors(const String &address, std::vector<SpoolmanVendor> &out);
 SpoolmanResult spoolmanGetFilaments(const String &address, std::vector<SpoolmanFilament> &out);
 SpoolmanResult spoolmanGetSpools(const String &address, std::vector<SpoolmanSpool> &out);
+
+// Remaining weight in whole grams of every spool, by spool id (a lighter read
+// than spoolmanGetSpools(): only the weight fields are kept).
+SpoolmanResult spoolmanGetWeights(const String &address, std::map<int, int> &out);
 
 // Remaining weight of one spool, in whole grams; -1 if not found/unavailable.
 int spoolmanGetRemainingWeight(const String &address, int spoolId);

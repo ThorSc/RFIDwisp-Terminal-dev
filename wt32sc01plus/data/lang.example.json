@@ -64,5 +64,19 @@
   "printer_address": "Moonraker address, e.g. http://192.168.1.50:7125",
   "field_required": "Name is required.",
   "address_invalid": "Invalid address (e.g. http://192.168.1.50:7125).",
-  "edit_tag": "Edit tag"
+  "edit_tag": "Edit tag",
+  "box": "Box",
+  "slot": "Slot",
+  "col_material": "Material",
+  "col_color": "Color",
+  "col_number": "No.",
+  "col_spoolman_vendor": "Spoolman vendor",
+  "col_weight": "Weight",
+  "no_printer_configured": "No printer configured - add one in Settings.",
+  "printer_checking": "Checking printer...",
+  "printer_not_connected": "not connected",
+  "box_error": "QIDI box data not available:",
+  "no_box": "No QIDI box connected.",
+  "printer_not_supported": "not supported",
+  "printer_not_supported_info": "The printer is connected, but not supported: it has no QIDI box data (QIDI Plus4 / Max4 only)."
 }

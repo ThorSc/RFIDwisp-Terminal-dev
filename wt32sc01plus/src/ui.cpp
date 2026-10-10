@@ -17,6 +17,10 @@
 // uiSetStatus() / uiShowSpool() with the result.
 void handleReadTagRequested();
 void handleEditTagRequested();
+void handleBoxPrinterSelected(int index);
+void handleBoxSelected(int box);
+void handleBoxRefreshRequested();
+void handleSettingsClosed();
 void handleWriteTagRequested();
 void handleUpdateButtonPressed();
 void handleInstallUpdateRequested();
@@ -26,6 +30,13 @@ void wifiSetupReset();
 
 static lv_obj_t *scrMain;
 static lv_obj_t *lblStatus;
+
+// QIDI box overview on the main screen
+struct SlotRow {
+  lv_obj_t *dot, *lblSlot, *lblMaterial, *swatch, *lblColor, *lblNumber, *lblVendor, *lblWeight;
+};
+static lv_obj_t *ddMainPrinter, *lblMainPrinter, *ddMainBox, *lblBoxState, *btnBoxRefresh;
+static SlotRow slotRows[4];
 
 static lv_obj_t *scrEdit;
 static lv_obj_t *ddMaterial;
@@ -771,6 +782,7 @@ static void settingsBackCb(lv_event_t *e) {
   commitSettingsField(lv_keyboard_get_textarea(keyboard));
   dropIncompletePrinters();
   lv_scr_load(scrMain);
+  handleSettingsClosed();
 }
 
 static void reconfigureNetworkCb(lv_event_t *e) { wifiSetupReset(); }
@@ -782,13 +794,192 @@ static lv_obj_t *labeledNumberField(lv_obj_t *parent, const char *labelText, int
   return makeNumberField(parent, x, y + 17, 140);
 }
 
+static void boxPrinterChangedCb(lv_event_t *e) {
+  handleBoxPrinterSelected(lv_dropdown_get_selected(ddMainPrinter));
+}
+
+static void boxChangedCb(lv_event_t *e) { handleBoxSelected(lv_dropdown_get_selected(ddMainBox) + 1); }
+
+static void boxRefreshCb(lv_event_t *e) { handleBoxRefreshRequested(); }
+
+static const lv_color_t kSlotEmptyColor = lv_color_hex(0xE53935);
+static const lv_color_t kSlotLoadedColor = lv_color_hex(0x43A047);
+static const lv_color_t kSlotActiveColor = lv_color_hex(0x4FD8EC);
+
+static lv_obj_t *makeSlotLabel(lv_obj_t *parent, int x, int width, lv_label_long_mode_t mode) {
+  lv_obj_t *label = lv_label_create(parent);
+  lv_obj_set_width(label, width);
+  lv_label_set_long_mode(label, mode);
+  lv_obj_align(label, LV_ALIGN_LEFT_MID, x, 0);
+  lv_label_set_text(label, "");
+  return label;
+}
+
+static void buildBoxOverview() {
+  // Controls row: printer, box, state, refresh
+  ddMainPrinter = lv_dropdown_create(scrMain);
+  lv_obj_set_size(ddMainPrinter, 200, 34);
+  lv_obj_align(ddMainPrinter, LV_ALIGN_TOP_LEFT, 10, 42);
+  lv_obj_add_event_cb(ddMainPrinter, boxPrinterChangedCb, LV_EVENT_VALUE_CHANGED, nullptr);
+  lv_obj_add_flag(ddMainPrinter, LV_OBJ_FLAG_HIDDEN);
+
+  lblMainPrinter = lv_label_create(scrMain);
+  lv_obj_set_width(lblMainPrinter, 290);
+  lv_label_set_long_mode(lblMainPrinter, LV_LABEL_LONG_DOT);
+  lv_obj_align(lblMainPrinter, LV_ALIGN_TOP_LEFT, 10, 50);
+  lv_label_set_text(lblMainPrinter, "");
+
+  ddMainBox = lv_dropdown_create(scrMain);
+  lv_obj_set_size(ddMainBox, 84, 34);
+  lv_obj_align(ddMainBox, LV_ALIGN_TOP_LEFT, 214, 42);
+  lv_obj_add_event_cb(ddMainBox, boxChangedCb, LV_EVENT_VALUE_CHANGED, nullptr);
+  lv_obj_add_flag(ddMainBox, LV_OBJ_FLAG_HIDDEN);
+
+  lblBoxState = lv_label_create(scrMain);
+  lv_obj_set_width(lblBoxState, 120);
+  lv_label_set_long_mode(lblBoxState, LV_LABEL_LONG_DOT);
+  lv_obj_align(lblBoxState, LV_ALIGN_TOP_LEFT, 304, 50);
+  lv_label_set_text(lblBoxState, "");
+
+  btnBoxRefresh = lv_btn_create(scrMain);
+  lv_obj_set_size(btnBoxRefresh, 42, 34);
+  lv_obj_align(btnBoxRefresh, LV_ALIGN_TOP_RIGHT, -10, 42);
+  lv_obj_add_event_cb(btnBoxRefresh, boxRefreshCb, LV_EVENT_CLICKED, nullptr);
+  lv_obj_t *lblRefresh = lv_label_create(btnBoxRefresh);
+  lv_label_set_text(lblRefresh, LV_SYMBOL_REFRESH);
+  lv_obj_center(lblRefresh);
+
+  // Column captions
+  struct Caption { StrId text; int x; };
+  const Caption captions[] = {{StrId::ColMaterial, 88}, {StrId::ColColor, 160}, {StrId::ColNumber, 248},
+                              {StrId::ColSpoolmanVendor, 292}};
+  for (const Caption &caption : captions) {
+    lv_obj_t *label = lv_label_create(scrMain);
+    lv_label_set_text(label, T(caption.text));
+    lv_obj_set_style_text_color(label, lv_color_hex(0x808080), 0);
+    lv_obj_align(label, LV_ALIGN_TOP_LEFT, caption.x, 79);
+  }
+  lv_obj_t *lblWeightCaption = lv_label_create(scrMain);
+  lv_label_set_text(lblWeightCaption, T(StrId::ColWeight));
+  lv_obj_set_style_text_color(lblWeightCaption, lv_color_hex(0x808080), 0);
+  lv_obj_align(lblWeightCaption, LV_ALIGN_TOP_RIGHT, -16, 79);
+
+  // The four slots, one row each
+  for (int i = 0; i < 4; i++) {
+    SlotRow &row = slotRows[i];
+    lv_obj_t *box = lv_obj_create(scrMain);
+    lv_obj_set_size(box, SCREEN_WIDTH - 20, 32);
+    lv_obj_align(box, LV_ALIGN_TOP_LEFT, 10, 96 + i * 34);
+    lv_obj_set_style_pad_all(box, 0, 0);
+    lv_obj_set_style_radius(box, 4, 0);
+    lv_obj_set_style_border_width(box, 1, 0);
+    lv_obj_set_style_border_color(box, lv_color_hex(0x707070), 0);
+    lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
+
+    row.dot = lv_obj_create(box);
+    lv_obj_set_size(row.dot, 12, 12);
+    lv_obj_set_style_radius(row.dot, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(row.dot, 0, 0);
+    lv_obj_set_style_bg_color(row.dot, kSlotEmptyColor, 0);
+    lv_obj_align(row.dot, LV_ALIGN_LEFT_MID, 6, 0);
+    lv_obj_clear_flag(row.dot, LV_OBJ_FLAG_SCROLLABLE);
+
+    row.lblSlot = makeSlotLabel(box, 24, 52, LV_LABEL_LONG_CLIP);
+    row.lblMaterial = makeSlotLabel(box, 78, 68, LV_LABEL_LONG_DOT);
+
+    row.swatch = lv_obj_create(box);
+    lv_obj_set_size(row.swatch, 20, 20);
+    lv_obj_set_style_radius(row.swatch, 3, 0);
+    lv_obj_set_style_border_width(row.swatch, 1, 0);
+    lv_obj_set_style_border_color(row.swatch, lv_color_hex(0x707070), 0);
+    lv_obj_align(row.swatch, LV_ALIGN_LEFT_MID, 150, 0);
+    lv_obj_clear_flag(row.swatch, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(row.swatch, LV_OBJ_FLAG_HIDDEN);
+    row.lblColor = makeSlotLabel(box, 176, 64, LV_LABEL_LONG_CLIP);
+
+    row.lblNumber = makeSlotLabel(box, 238, 44, LV_LABEL_LONG_CLIP);
+    row.lblVendor = makeSlotLabel(box, 282, 100, LV_LABEL_LONG_DOT);
+    row.lblWeight = makeSlotLabel(box, 384, 68, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_align(row.lblWeight, LV_TEXT_ALIGN_RIGHT, 0);
+  }
+  uiBoxShowSlots(0, nullptr);
+}
+
+void uiBoxShowPrinters(const std::vector<String> &names, int selected, const char *info) {
+  if (names.size() > 1) {
+    String options;
+    for (size_t i = 0; i < names.size(); i++) {
+      if (i > 0) options += "\n";
+      options += names[i];
+    }
+    lv_dropdown_set_options(ddMainPrinter, options.c_str());
+    lv_dropdown_set_selected(ddMainPrinter, selected >= 0 ? selected : 0);
+    lv_obj_clear_flag(ddMainPrinter, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(lblMainPrinter, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(ddMainPrinter, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(lblMainPrinter, info);
+    lv_obj_clear_flag(lblMainPrinter, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+void uiBoxShowBoxes(int count, int selected) {
+  if (count > 1) {
+    String options;
+    for (int i = 1; i <= count; i++) {
+      if (i > 1) options += "\n";
+      options += String(T(StrId::BoxLabel)) + " " + String(i);
+    }
+    lv_dropdown_set_options(ddMainBox, options.c_str());
+    lv_dropdown_set_selected(ddMainBox, selected >= 1 ? selected - 1 : 0);
+    lv_obj_clear_flag(ddMainBox, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(ddMainBox, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+void uiBoxShowState(const char *text, bool error) {
+  lv_label_set_text(lblBoxState, text);
+  lv_obj_set_style_text_color(lblBoxState, error ? lv_color_hex(0xE53935) : lv_color_hex(0x808080), 0);
+}
+
+void uiBoxShowSlots(int firstSlot, const BoxSlotView *slots) {
+  for (int i = 0; i < 4; i++) {
+    SlotRow &row = slotRows[i];
+    const BoxSlotView *slot = slots ? &slots[i] : nullptr;
+
+    lv_obj_set_style_bg_color(row.dot,
+                              slot && slot->loaded ? (slot->active ? kSlotActiveColor : kSlotLoadedColor)
+                                                   : kSlotEmptyColor,
+                              0);
+    // The slot within its box: 0-3, as in the app.
+    lv_label_set_text(row.lblSlot, (String(T(StrId::SlotLabel)) + " " + String((firstSlot + i) % 4)).c_str());
+    lv_label_set_text(row.lblMaterial, slot ? slot->material.c_str() : "");
+
+    const char *hex = slot ? slot->colorHex.c_str() : "";
+    bool isColor = hex[0] == '#' && strlen(hex) == 7;
+    if (isColor) {
+      lv_obj_set_style_bg_color(row.swatch, lv_color_hex(rgbFromHex(hex)), 0);
+      lv_obj_clear_flag(row.swatch, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(row.swatch, LV_OBJ_FLAG_HIDDEN);
+    }
+    lv_label_set_text(row.lblColor, hex);
+    lv_obj_align(row.lblColor, LV_ALIGN_LEFT_MID, isColor ? 176 : 150, 0);
+
+    lv_label_set_text(row.lblNumber, slot && slot->spoolNumber > 0 ? String(slot->spoolNumber).c_str() : "");
+    lv_label_set_text(row.lblVendor, slot ? slot->spoolmanVendor.c_str() : "");
+    lv_label_set_text(row.lblWeight, slot && slot->weightGrams >= 0 ? (String(slot->weightGrams) + " g").c_str() : "");
+  }
+}
+
 static void buildMainScreen() {
   scrMain = lv_obj_create(nullptr);
 
   lv_obj_t *title = lv_label_create(scrMain);
   lv_label_set_text(title, T(StrId::AppTitle));
   lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 12);
+  lv_obj_align(title, LV_ALIGN_TOP_LEFT, 10, 6);
 
   lv_obj_t *version = lv_label_create(scrMain);
   lv_label_set_text(version, "v" FIRMWARE_VERSION);
@@ -797,8 +988,8 @@ static void buildMainScreen() {
   lv_obj_align_to(version, title, LV_ALIGN_OUT_RIGHT_BOTTOM, 6, -2);
 
   lv_obj_t *btnSettings = lv_btn_create(scrMain);
-  lv_obj_set_size(btnSettings, 50, 40);
-  lv_obj_align(btnSettings, LV_ALIGN_TOP_RIGHT, -10, 8);
+  lv_obj_set_size(btnSettings, 50, 34);
+  lv_obj_align(btnSettings, LV_ALIGN_TOP_RIGHT, -10, 3);
   lv_obj_add_event_cb(btnSettings, settingsButtonCb, LV_EVENT_CLICKED, nullptr);
   lv_obj_t *lblGear = lv_label_create(btnSettings);
   lv_label_set_text(lblGear, LV_SYMBOL_SETTINGS);
@@ -809,18 +1000,20 @@ static void buildMainScreen() {
   lv_obj_set_width(lblStatus, SCREEN_WIDTH - 40);
   lv_label_set_long_mode(lblStatus, LV_LABEL_LONG_WRAP);
   lv_obj_set_style_text_align(lblStatus, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(lblStatus, LV_ALIGN_BOTTOM_MID, 0, -10);
+  lv_obj_align(lblStatus, LV_ALIGN_BOTTOM_MID, 0, -6);
 
   // A tag put on the reader is read automatically and opens the edit screen;
   // the button opens it as well, with empty fields, whether a tag lies on the
   // reader or not.
   lv_obj_t *btn = lv_btn_create(scrMain);
-  lv_obj_set_size(btn, 240, 90);
-  lv_obj_align(btn, LV_ALIGN_CENTER, 0, 45);
+  lv_obj_set_size(btn, 240, 44);
+  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -34);
   lv_obj_add_event_cb(btn, editButtonCb, LV_EVENT_CLICKED, nullptr);
   lv_obj_t *label = lv_label_create(btn);
   lv_label_set_text(label, T(StrId::EditTag));
   lv_obj_center(label);
+
+  buildBoxOverview();
 }
 
 static void buildEditScreen() {

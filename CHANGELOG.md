@@ -17,8 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - A tag that was read earlier and still lies on the reader is found again by "Write tag" / "Read tag" on the
   edit screen without taking it away first.
 - A tag put on the reader is detected automatically while the main screen is showing: the terminal reads it and
-  opens the edit screen with its data, no button press needed. The "Read tag" button still works.
-  The tag has to be taken away before the same tag is read again.
+  opens the edit screen with its data, no button press needed. The tag has to be taken away before the same tag is read again.
 - The status line is at the bottom edge of the main and edit screens.
 - The edit screen has a "Read tag" button next to "Write tag" and "Back", to read another tag without
   returning to the main screen.
@@ -27,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- QIDI box overview on the main screen, like the app's QIDI Data frame: the four slots of a box with state
+  (empty / loaded / feeding), slot number, material, colour, spool number, Spoolman vendor and remaining weight.
+  With more than one printer a drop-down chooses the printer, with more than one box a second one the box. The
+  data is read from the printer's Moonraker in the background (QIDI Plus4 / Max4; the Q2 is not supported) and
+  refreshed with the refresh button, on a change of printer or box and when leaving the settings.
 - Printers: the Printer tab lists the configured printers (name and Moonraker address) and adds, edits and
   deletes them, like the app. They are stored on the device.
 

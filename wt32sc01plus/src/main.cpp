@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <vector>
+#include "box_monitor.h"
 #include "display_setup.h"
 #include "mfrc522_reader.h"
 #include "ota_setup.h"
@@ -354,6 +355,117 @@ static void pollForTag() {
   readTagAndShow(true);
 }
 
+// ---------------------------------------------------------------------------
+// QIDI box overview on the main screen. The printer is asked in a background
+// task (box_monitor.cpp); loop() picks up the answer.
+// ---------------------------------------------------------------------------
+
+static int boxNumber = 1;      // the box shown, 1-4
+static String boxSignature;    // printer + Spoolman the last request was made for
+
+static int selectedPrinterIndex() {
+  for (size_t i = 0; i < settings.printers.size(); i++) {
+    if (settings.printers[i].id == settings.selectedPrinterId) return (int)i;
+  }
+  return settings.printers.empty() ? -1 : 0;
+}
+
+static String printerName(const Printer &printer) {
+  return printer.name.length() ? printer.name : printer.id;
+}
+
+static String boxRequestSignature() {
+  int index = selectedPrinterIndex();
+  if (index < 0) return "";
+  const Printer &printer = settings.printers[index];
+  return printer.id + "|" + printer.address + "|" + (spoolmanActive() ? settings.spoolmanAddress : "");
+}
+
+// Shows the printer drop-down (several printers) or the printer's name.
+static void showBoxPrinters() {
+  std::vector<String> names;
+  for (const Printer &printer : settings.printers) names.push_back(printerName(printer));
+  int index = selectedPrinterIndex();
+  String info = index < 0 ? String(T(StrId::NoPrinterConfigured))
+                          : printerName(settings.printers[index]) + " (" + settings.printers[index].address + ")";
+  uiBoxShowPrinters(names, index, info.c_str());
+}
+
+static void requestBoxData() {
+  boxSignature = boxRequestSignature();
+  int index = selectedPrinterIndex();
+  if (index < 0) {
+    uiBoxShowBoxes(0, 0);
+    uiBoxShowState("", false);
+    uiBoxShowSlots(0, nullptr);
+    return;
+  }
+  boxMonitorRequest(settings.printers[index].address, boxNumber,
+                    spoolmanActive() ? settings.spoolmanAddress : String());
+  uiBoxShowState(T(StrId::PrinterChecking), false);
+}
+
+// Called from loop(): shows the answer of the background task.
+static void pollBoxResult() {
+  BoxResult result;
+  if (!boxMonitorTakeResult(result)) return;
+  if (result.generation != boxMonitorLatestGeneration()) return; // a newer request is under way
+
+  if (!result.ok) {
+    uiBoxShowBoxes(0, 0);
+    uiBoxShowSlots(0, nullptr);
+    // A printer that answers but has no box data is no connection problem:
+    // say so, or the user starts looking for one.
+    uiBoxShowState(T(result.unsupported ? StrId::PrinterNotSupported : StrId::PrinterNotConnected), true);
+    if (uiIsMainScreenIdle()) {
+      uiSetStatus(result.unsupported
+                      ? T(StrId::PrinterNotSupportedInfo)
+                      : (String(T(StrId::BoxError)) + " " + result.error).c_str());
+    }
+    return;
+  }
+  if (result.boxCount == 0) {
+    uiBoxShowBoxes(0, 0);
+    uiBoxShowSlots(0, nullptr);
+    uiBoxShowState(T(StrId::NoBox), false);
+    return;
+  }
+  if (boxNumber > result.boxCount) { // the box is gone: back to the first one
+    boxNumber = 1;
+    requestBoxData();
+    return;
+  }
+  uiBoxShowBoxes(result.boxCount, boxNumber);
+  uiBoxShowState("", false);
+  uiBoxShowSlots((boxNumber - 1) * 4, result.slots);
+}
+
+void handleBoxPrinterSelected(int index) {
+  if (index < 0 || index >= (int)settings.printers.size()) return;
+  settings.selectedPrinterId = settings.printers[index].id;
+  settings.save();
+  boxNumber = 1;
+  uiBoxShowSlots(0, nullptr);
+  requestBoxData();
+}
+
+void handleBoxSelected(int box) {
+  boxNumber = box;
+  requestBoxData();
+}
+
+void handleBoxRefreshRequested() { requestBoxData(); }
+
+// The settings screen was left: printers or Spoolman may have changed.
+void handleSettingsClosed() {
+  showBoxPrinters();
+  if (boxRequestSignature() != boxSignature) {
+    boxNumber = 1;
+    uiBoxShowSlots(0, nullptr);
+    requestBoxData();
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -364,6 +476,7 @@ void setup() {
   displaySetSleepTimeout(settings.sleepMinutes);
   uiInit();
 
+  boxMonitorBegin();
   connectWifi();
 
   readerOk = reader.begin();
@@ -373,6 +486,9 @@ void setup() {
     uiSetStatus(T(StrId::StatusHoldTag));
   }
 
+  showBoxPrinters();
+  requestBoxData();
+
   if (wifiConnected && settings.checkForUpdates) checkForUpdate(true);
 }
 
@@ -380,6 +496,7 @@ void loop() {
   displayLoop();
   runPendingUpdateAction();
   pollForTag();
+  pollBoxResult();
   otaLoop();
   delay(5);
 }

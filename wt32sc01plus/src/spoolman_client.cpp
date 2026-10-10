@@ -6,7 +6,8 @@
 static const uint32_t kTimeoutMs = 5000;
 
 static SpoolmanResult httpJson(const String &method, const String &url,
-                               const String &body, JsonDocument &doc) {
+                               const String &body, JsonDocument &doc,
+                               const JsonDocument *filter = nullptr) {
   SpoolmanResult result;
 
   HTTPClient http;
@@ -33,7 +34,9 @@ static SpoolmanResult httpJson(const String &method, const String &url,
     return result;
   }
 
-  DeserializationError error = deserializeJson(doc, http.getStream());
+  DeserializationError error =
+      filter ? deserializeJson(doc, http.getStream(), DeserializationOption::Filter(*filter))
+             : deserializeJson(doc, http.getStream());
   http.end();
   if (error) {
     result.error = "Malformed JSON response.";
@@ -114,6 +117,28 @@ SpoolmanResult spoolmanGetSpools(const String &address, std::vector<SpoolmanSpoo
     spool.vendorName = (const char *)(filament["vendor"]["name"] | "");
     spool.remainingWeightGrams = spoolWeightGrams(item);
     out.push_back(spool);
+  }
+  return result;
+}
+
+SpoolmanResult spoolmanGetWeights(const String &address, std::map<int, int> &out) {
+  out.clear();
+  // Only id and the weight fields are kept: the full answer holds every spool
+  // with its filament and vendor, which can be a lot.
+  JsonDocument filter;
+  JsonObject item = filter.add<JsonObject>();
+  item["id"] = true;
+  item["remaining_weight"] = true;
+  item["initial_weight"] = true;
+  item["used_weight"] = true;
+
+  JsonDocument doc;
+  SpoolmanResult result = httpJson("GET", address + "/api/v1/spool", "", doc, &filter);
+  if (!result.ok) return result;
+
+  for (JsonVariantConst spool : doc.as<JsonArrayConst>()) {
+    int id = spool["id"] | 0;
+    if (id > 0) out[id] = spoolWeightGrams(spool);
   }
   return result;
 }

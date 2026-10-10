@@ -1,4 +1,5 @@
 #pragma once
+#include "box_monitor.h"
 #include "qidi_tag.h"
 #include "spoolman_client.h"
 #include <vector>
@@ -47,6 +48,25 @@ int uiSelectedSpoolmanVendorId();
 // True while the main screen is showing and nothing covers it (no dialog, no
 // "please wait"): the only time a tag put on the reader is read automatically.
 bool uiIsMainScreenIdle();
+
+// The QIDI box overview on the main screen (implemented in main.cpp: the
+// callbacks it calls, called here: what it shows).
+//
+// Printer: a drop-down if there are several printers, else [info] as text
+// (name and address, or a hint if there is none). [names] has one entry per
+// printer, [selected] is the chosen one.
+void uiBoxShowPrinters(const std::vector<String> &names, int selected, const char *info);
+
+// Box: a drop-down if the printer has more than one box.
+void uiBoxShowBoxes(int count, int selected);
+
+// A short note next to the drop-downs: "checking...", "not connected"...
+// [error] draws it in red; an empty text hides it.
+void uiBoxShowState(const char *text, bool error);
+
+// The four slots shown: [firstSlot] is the number of the first (0, 4, 8, 12);
+// [slots] == nullptr clears the rows.
+void uiBoxShowSlots(int firstSlot, const BoxSlotView *slots);
 
 // Updates the status line on the main screen.
 void uiSetStatus(const char *text);

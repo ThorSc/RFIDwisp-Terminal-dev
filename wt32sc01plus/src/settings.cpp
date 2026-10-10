@@ -14,6 +14,7 @@ void AppSettings::load() {
   sleepMinutes = min<uint8_t>(prefs.getUChar("sleepMin", 10), 60);
   otaPassword = prefs.getString("otaPass", "");
   checkForUpdates = prefs.getBool("updCheck", true);
+  selectedPrinterId = prefs.getString("printerSel", "");
   String printersJson = prefs.getString("printers", "");
   prefs.end();
 
@@ -51,5 +52,6 @@ void AppSettings::save() const {
   String printersJson;
   serializeJson(doc, printersJson);
   prefs.putString("printers", printersJson);
+  prefs.putString("printerSel", selectedPrinterId);
   prefs.end();
 }
