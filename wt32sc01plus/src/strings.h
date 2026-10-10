@@ -67,6 +67,15 @@ enum class StrId {
   UpdateCheckFailed,
   UpdateInstallFailed,
   Firmware,
+  TabGeneral,
+  TabWifi,
+  TabPrinter,
+  TabSpoolman,
+  PrinterNone,
+  PrinterName,
+  PrinterAddress,
+  FieldRequired,
+  AddressInvalid,
   Count // sentinel, not a real string
 };
 

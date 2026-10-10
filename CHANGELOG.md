@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- The settings screen has tabs like the RFIDwisp app: General (screen sleep, firmware update and version),
+  WiFi (status, reconfigure network), Printer and Spoolman (address, use Spoolman).
+
+### Added
+
+- Printers: the Printer tab lists the configured printers (name and Moonraker address) and adds, edits and
+  deletes them, like the app. They are stored on the device.
+
 ## [0.6.2] - 2026-10-06
 
 ### Fixed

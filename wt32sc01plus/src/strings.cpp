@@ -61,6 +61,15 @@ static const char *const keys[(int)StrId::Count] = {
   "update_check_failed",
   "update_install_failed",
   "firmware",
+  "tab_general",
+  "tab_wifi",
+  "tab_printer",
+  "tab_spoolman",
+  "printer_none",
+  "printer_name",
+  "printer_address",
+  "field_required",
+  "address_invalid",
 };
 
 static const char *const defaultStrings[(int)StrId::Count] = {
@@ -120,6 +129,15 @@ static const char *const defaultStrings[(int)StrId::Count] = {
   "Update check failed:",
   "Update failed:",
   "Firmware",
+  "General",
+  "WiFi",
+  "Printer",
+  "Spoolman",
+  "No printers yet",
+  "Name",
+  "Moonraker address, e.g. http://192.168.1.50:7125",
+  "Name is required.",
+  "Invalid address (e.g. http://192.168.1.50:7125).",
 };
 // clang-format on
 

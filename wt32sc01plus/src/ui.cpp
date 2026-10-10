@@ -54,6 +54,8 @@ static std::vector<SpoolmanFilament> uiFilaments;
 static lv_obj_t *scrSettings;
 static lv_obj_t *lblWifiStatus;
 static lv_obj_t *taSpoolmanAddress;
+static lv_obj_t *ddPrinter, *taPrinterName, *taPrinterAddress, *btnPrinterDelete, *lblPrinterError;
+static int selectedPrinter = -1; // index into settings.printers, -1 = none
 static lv_obj_t *keyboard;
 static lv_obj_t *swUseSpoolman;
 static lv_obj_t *swUpdateCheck;
@@ -489,6 +491,8 @@ static void spoolDropdownCb(lv_event_t *e) {
   setNewSpoolFieldsEnabled(false);
 }
 
+static void loadPrinterTab();
+
 static void refreshSettingsScreen() {
   setNumberField(sbSleep, settings.sleepMinutes);
   lv_textarea_set_text(taSpoolmanAddress, settings.spoolmanAddress.c_str());
@@ -497,6 +501,7 @@ static void refreshSettingsScreen() {
   } else {
     lv_obj_clear_state(swUseSpoolman, LV_STATE_CHECKED);
   }
+  loadPrinterTab();
 }
 
 static void settingsButtonCb(lv_event_t *e) {
@@ -598,19 +603,171 @@ static void saveSpoolmanAddress() {
   settings.save();
 }
 
-static void spoolmanAddressFocusCb(lv_event_t *e) {
-  lv_keyboard_set_textarea(keyboard, taSpoolmanAddress);
+// Cleans up an address entered by the user, like normalizeAddress() in the
+// Flutter app: a missing scheme becomes http://, trailing slashes go. Returns
+// false if the result is not an http(s) address with a host.
+static bool normalizeAddress(String &address) {
+  address.trim();
+  if (address.isEmpty()) return false;
+  for (size_t i = 0; i < address.length(); i++) {
+    if (isspace((unsigned char)address[i])) return false;
+  }
+  if (address.indexOf("://") < 0) address = "http://" + address;
+  while (address.endsWith("/")) address.remove(address.length() - 1);
+  int hostStart = address.startsWith("https://") ? 8 : address.startsWith("http://") ? 7 : -1;
+  return hostStart > 0 && (int)address.length() > hostStart && address[hostStart] != '/';
+}
+
+static String printerListName(const Printer &printer) {
+  return printer.name.length() ? printer.name : printer.id;
+}
+
+// Fills the dropdown from settings.printers and shows/hides the fields below.
+static void refreshPrinterWidgets() {
+  String options;
+  for (size_t i = 0; i < settings.printers.size(); i++) {
+    if (i > 0) options += "\n";
+    options += printerListName(settings.printers[i]);
+  }
+  bool any = selectedPrinter >= 0 && selectedPrinter < (int)settings.printers.size();
+  if (settings.printers.empty()) {
+    lv_dropdown_set_options(ddPrinter, T(StrId::PrinterNone));
+    lv_obj_add_state(ddPrinter, LV_STATE_DISABLED);
+  } else {
+    lv_dropdown_set_options(ddPrinter, options.c_str());
+    lv_obj_clear_state(ddPrinter, LV_STATE_DISABLED);
+    if (any) lv_dropdown_set_selected(ddPrinter, selectedPrinter);
+  }
+  for (lv_obj_t *obj : {taPrinterName, taPrinterAddress}) {
+    if (any) {
+      lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  if (any) {
+    lv_obj_clear_state(btnPrinterDelete, LV_STATE_DISABLED);
+  } else {
+    lv_obj_add_state(btnPrinterDelete, LV_STATE_DISABLED);
+    lv_label_set_text(lblPrinterError, "");
+  }
+}
+
+// Makes [index] the printer shown in the form (-1 clears the form).
+static void selectPrinter(int index) {
+  selectedPrinter = (index >= 0 && index < (int)settings.printers.size()) ? index : -1;
+  const Printer *printer = selectedPrinter >= 0 ? &settings.printers[selectedPrinter] : nullptr;
+  lv_textarea_set_text(taPrinterName, printer ? printer->name.c_str() : "");
+  lv_textarea_set_text(taPrinterAddress, printer ? printer->address.c_str() : "");
+  lv_label_set_text(lblPrinterError, "");
+  refreshPrinterWidgets();
+}
+
+// Entries that were never filled in completely are not stored (see
+// AppSettings::save), so they are dropped when the screen is left.
+static void dropIncompletePrinters() {
+  for (size_t i = settings.printers.size(); i-- > 0;) {
+    const Printer &printer = settings.printers[i];
+    if (printer.name.isEmpty() || printer.address.isEmpty()) {
+      settings.printers.erase(settings.printers.begin() + i);
+    }
+  }
+  selectedPrinter = -1;
+}
+
+static void loadPrinterTab() {
+  dropIncompletePrinters();
+  selectPrinter(settings.printers.empty() ? -1 : 0);
+}
+
+// Writes the form back into the selected printer. A blank form is not an
+// error; an address that is not valid is not stored and reported instead.
+static void commitPrinterFields() {
+  if (selectedPrinter < 0 || selectedPrinter >= (int)settings.printers.size()) return;
+  Printer &printer = settings.printers[selectedPrinter];
+
+  String name = lv_textarea_get_text(taPrinterName);
+  name.trim();
+  String address = lv_textarea_get_text(taPrinterAddress);
+  address.trim();
+  bool blank = name.isEmpty() && address.isEmpty();
+
+  bool addressOk = address.isEmpty() || normalizeAddress(address);
+  printer.name = name;
+  if (address.isEmpty()) {
+    printer.address = "";
+  } else if (addressOk) {
+    printer.address = address;
+    lv_textarea_set_text(taPrinterAddress, address.c_str());
+  }
+
+  const char *error = "";
+  if (!blank && name.isEmpty()) {
+    error = T(StrId::FieldRequired);
+  } else if (!blank && (!addressOk || address.isEmpty())) {
+    error = T(StrId::AddressInvalid);
+  }
+  lv_label_set_text(lblPrinterError, error);
+  settings.save();
+
+  // The name may have changed; keep the list entry in step.
+  refreshPrinterWidgets();
+}
+
+static void printerSelectedCb(lv_event_t *e) {
+  commitPrinterFields();
+  selectPrinter(lv_dropdown_get_selected(ddPrinter));
+}
+
+static void printerNewCb(lv_event_t *e) {
+  commitPrinterFields();
+  if (settings.printers.size() >= kMaxPrinters) return;
+  String id;
+  for (int number = 1;; number++) {
+    id = "printer" + String(number);
+    bool used = false;
+    for (const Printer &printer : settings.printers) used = used || printer.id == id;
+    if (!used) break;
+  }
+  settings.printers.push_back(Printer{id, "", ""});
+  selectPrinter(settings.printers.size() - 1);
+}
+
+static void printerDeleteCb(lv_event_t *e) {
+  if (selectedPrinter < 0 || selectedPrinter >= (int)settings.printers.size()) return;
+  settings.printers.erase(settings.printers.begin() + selectedPrinter);
+  settings.save();
+  selectPrinter(settings.printers.empty() ? -1 : 0);
+}
+
+// Commits the text field that was being edited.
+static void commitSettingsField(lv_obj_t *field) {
+  if (field == taSpoolmanAddress) {
+    saveSpoolmanAddress();
+  } else if (field == taPrinterName || field == taPrinterAddress) {
+    commitPrinterFields();
+  }
+}
+
+static void settingsFieldFocusCb(lv_event_t *e) {
+  lv_keyboard_set_textarea(keyboard, lv_event_get_target(e));
   lv_obj_clear_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void spoolmanAddressDefocusCb(lv_event_t *e) {
+static void settingsFieldDefocusCb(lv_event_t *e) {
   lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
-  saveSpoolmanAddress();
+  commitSettingsField(lv_event_get_target(e));
 }
 
 static void keyboardReadyCb(lv_event_t *e) {
   lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
-  saveSpoolmanAddress();
+  commitSettingsField(lv_keyboard_get_textarea(keyboard));
+}
+
+static void settingsBackCb(lv_event_t *e) {
+  commitSettingsField(lv_keyboard_get_textarea(keyboard));
+  dropIncompletePrinters();
+  lv_scr_load(scrMain);
 }
 
 static void reconfigureNetworkCb(lv_event_t *e) { wifiSetupReset(); }
@@ -771,84 +928,138 @@ static void buildEditScreen() {
   uiSetSpoolmanMode(false);
 }
 
+static lv_obj_t *makeSettingsField(lv_obj_t *parent, const char *placeholder, int y) {
+  lv_obj_t *field = lv_textarea_create(parent);
+  lv_textarea_set_one_line(field, true);
+  lv_textarea_set_placeholder_text(field, placeholder);
+  lv_obj_set_size(field, SCREEN_WIDTH - 24, 40);
+  lv_obj_align(field, LV_ALIGN_TOP_LEFT, 0, y);
+  lv_obj_add_event_cb(field, settingsFieldFocusCb, LV_EVENT_FOCUSED, nullptr);
+  lv_obj_add_event_cb(field, settingsFieldDefocusCb, LV_EVENT_DEFOCUSED, nullptr);
+  return field;
+}
+
 static void buildSettingsScreen() {
   scrSettings = lv_obj_create(nullptr);
 
-  lv_obj_t *title = lv_label_create(scrSettings);
-  lv_label_set_text(title, T(StrId::Settings));
-  lv_obj_set_style_text_font(title, &lv_font_montserrat_18, 0);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 6);
+  const int backH = 44;
+  lv_obj_t *tabs = lv_tabview_create(scrSettings, LV_DIR_TOP, 36);
+  lv_obj_set_size(tabs, SCREEN_WIDTH, SCREEN_HEIGHT - backH - 10);
+  lv_obj_align(tabs, LV_ALIGN_TOP_LEFT, 0, 0);
+  lv_obj_t *tabGeneral = lv_tabview_add_tab(tabs, T(StrId::TabGeneral));
+  lv_obj_t *tabWifi = lv_tabview_add_tab(tabs, T(StrId::TabWifi));
+  lv_obj_t *tabPrinter = lv_tabview_add_tab(tabs, T(StrId::TabPrinter));
+  lv_obj_t *tabSpoolman = lv_tabview_add_tab(tabs, T(StrId::TabSpoolman));
+  for (lv_obj_t *tab : {tabGeneral, tabWifi, tabPrinter, tabSpoolman}) {
+    lv_obj_set_style_pad_all(tab, 12, 0);
+  }
 
-  lblWifiStatus = lv_label_create(scrSettings);
-  lv_obj_set_width(lblWifiStatus, SCREEN_WIDTH - 30);
-  lv_label_set_long_mode(lblWifiStatus, LV_LABEL_LONG_WRAP);
-  lv_obj_align(lblWifiStatus, LV_ALIGN_TOP_LEFT, 15, 36);
-
-  taSpoolmanAddress = lv_textarea_create(scrSettings);
-  lv_textarea_set_one_line(taSpoolmanAddress, true);
-  lv_textarea_set_placeholder_text(taSpoolmanAddress, T(StrId::SpoolmanAddress));
-  lv_obj_set_size(taSpoolmanAddress, SCREEN_WIDTH - 30, 38);
-  lv_obj_align(taSpoolmanAddress, LV_ALIGN_TOP_LEFT, 15, 60);
-  lv_obj_add_event_cb(taSpoolmanAddress, spoolmanAddressFocusCb, LV_EVENT_FOCUSED, nullptr);
-  lv_obj_add_event_cb(taSpoolmanAddress, spoolmanAddressDefocusCb, LV_EVENT_DEFOCUSED, nullptr);
-
-  lv_obj_t *lblUseSpoolman = lv_label_create(scrSettings);
-  lv_label_set_text(lblUseSpoolman, T(StrId::UseSpoolman));
-  lv_obj_align(lblUseSpoolman, LV_ALIGN_TOP_LEFT, 15, 108);
-  swUseSpoolman = lv_switch_create(scrSettings);
-  lv_obj_align(swUseSpoolman, LV_ALIGN_TOP_LEFT, 200, 102);
-  lv_obj_add_event_cb(swUseSpoolman, useSpoolmanToggleCb, LV_EVENT_VALUE_CHANGED, nullptr);
-
-  lv_obj_t *lblSleep = lv_label_create(scrSettings);
+  // General: screen sleep, firmware update
+  lv_obj_t *lblSleep = lv_label_create(tabGeneral);
   lv_label_set_text(lblSleep, T(StrId::SleepTimeout));
-  lv_obj_align(lblSleep, LV_ALIGN_TOP_LEFT, 15, 150);
-  sbSleep = makeNumberField(scrSettings, 340, 140, 120);
+  lv_obj_align(lblSleep, LV_ALIGN_TOP_LEFT, 0, 10);
+  sbSleep = makeNumberField(tabGeneral, SCREEN_WIDTH - 24 - 120, 0, 120);
   setNumberField(sbSleep, settings.sleepMinutes);
 
-  lv_obj_t *lblUpdateCheck = lv_label_create(scrSettings);
+  lv_obj_t *lblUpdateCheck = lv_label_create(tabGeneral);
   lv_label_set_text(lblUpdateCheck, T(StrId::UpdateAtStartup));
-  lv_obj_align(lblUpdateCheck, LV_ALIGN_TOP_LEFT, 15, 196);
-  swUpdateCheck = lv_switch_create(scrSettings);
+  lv_obj_align(lblUpdateCheck, LV_ALIGN_TOP_LEFT, 0, 62);
+  swUpdateCheck = lv_switch_create(tabGeneral);
   lv_obj_set_size(swUpdateCheck, 50, 26);
-  lv_obj_align(swUpdateCheck, LV_ALIGN_TOP_LEFT, 165, 190);
+  lv_obj_align(swUpdateCheck, LV_ALIGN_TOP_LEFT, 150, 56);
   if (settings.checkForUpdates) lv_obj_add_state(swUpdateCheck, LV_STATE_CHECKED);
   lv_obj_add_event_cb(swUpdateCheck, updateCheckToggleCb, LV_EVENT_VALUE_CHANGED, nullptr);
 
-  lv_obj_t *btnUpdate = lv_btn_create(scrSettings);
+  lv_obj_t *btnUpdate = lv_btn_create(tabGeneral);
   lv_obj_set_size(btnUpdate, 240, 38);
-  lv_obj_align(btnUpdate, LV_ALIGN_TOP_RIGHT, -15, 186);
+  lv_obj_align(btnUpdate, LV_ALIGN_TOP_RIGHT, 0, 50);
   lv_obj_add_event_cb(btnUpdate, updateButtonCb, LV_EVENT_CLICKED, nullptr);
   lblUpdateButton = lv_label_create(btnUpdate);
   lv_label_set_text(lblUpdateButton, T(StrId::UpdateCheckNow));
   lv_obj_center(lblUpdateButton);
 
-  lblUpdateStatus = lv_label_create(scrSettings);
-  lv_obj_set_width(lblUpdateStatus, SCREEN_WIDTH - 30);
+  lblUpdateStatus = lv_label_create(tabGeneral);
+  lv_obj_set_width(lblUpdateStatus, SCREEN_WIDTH - 24);
   lv_label_set_long_mode(lblUpdateStatus, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_font(lblUpdateStatus, &lv_font_montserrat_14, 0);
   lv_obj_set_style_text_color(lblUpdateStatus, lv_color_hex(0x808080), 0);
-  lv_obj_align(lblUpdateStatus, LV_ALIGN_TOP_LEFT, 15, 230);
+  lv_obj_align(lblUpdateStatus, LV_ALIGN_TOP_LEFT, 0, 100);
   lv_label_set_text(lblUpdateStatus, (String(T(StrId::Firmware)) + " v" + FIRMWARE_VERSION).c_str());
 
-  lv_obj_t *btnReconfigure = lv_btn_create(scrSettings);
+  // WiFi: status, reconfigure
+  lblWifiStatus = lv_label_create(tabWifi);
+  lv_obj_set_width(lblWifiStatus, SCREEN_WIDTH - 24);
+  lv_label_set_long_mode(lblWifiStatus, LV_LABEL_LONG_WRAP);
+  lv_obj_align(lblWifiStatus, LV_ALIGN_TOP_LEFT, 0, 0);
+
+  lv_obj_t *btnReconfigure = lv_btn_create(tabWifi);
   lv_obj_set_size(btnReconfigure, 265, 50);
-  lv_obj_align(btnReconfigure, LV_ALIGN_BOTTOM_LEFT, 15, -10);
+  lv_obj_align(btnReconfigure, LV_ALIGN_TOP_LEFT, 0, 110);
   lv_obj_add_event_cb(btnReconfigure, reconfigureNetworkCb, LV_EVENT_CLICKED, nullptr);
   lv_obj_t *lblReconfigure = lv_label_create(btnReconfigure);
   lv_label_set_text(lblReconfigure, T(StrId::ReconfigureNetwork));
   lv_obj_center(lblReconfigure);
 
+  // Printer: choose, add, delete, edit name and Moonraker address
+  const int iconW = 52, iconGap = 8;
+  ddPrinter = lv_dropdown_create(tabPrinter);
+  lv_obj_set_size(ddPrinter, SCREEN_WIDTH - 24 - 2 * (iconW + iconGap), 40);
+  lv_obj_align(ddPrinter, LV_ALIGN_TOP_LEFT, 0, 0);
+  lv_obj_add_event_cb(ddPrinter, printerSelectedCb, LV_EVENT_VALUE_CHANGED, nullptr);
+
+  lv_obj_t *btnPrinterNew = lv_btn_create(tabPrinter);
+  lv_obj_set_size(btnPrinterNew, iconW, 40);
+  lv_obj_align(btnPrinterNew, LV_ALIGN_TOP_RIGHT, -(iconW + iconGap), 0);
+  lv_obj_add_event_cb(btnPrinterNew, printerNewCb, LV_EVENT_CLICKED, nullptr);
+  lv_obj_t *lblPrinterNew = lv_label_create(btnPrinterNew);
+  lv_label_set_text(lblPrinterNew, LV_SYMBOL_PLUS);
+  lv_obj_center(lblPrinterNew);
+
+  btnPrinterDelete = lv_btn_create(tabPrinter);
+  lv_obj_set_size(btnPrinterDelete, iconW, 40);
+  lv_obj_align(btnPrinterDelete, LV_ALIGN_TOP_RIGHT, 0, 0);
+  lv_obj_add_event_cb(btnPrinterDelete, printerDeleteCb, LV_EVENT_CLICKED, nullptr);
+  lv_obj_t *lblPrinterDelete = lv_label_create(btnPrinterDelete);
+  lv_label_set_text(lblPrinterDelete, LV_SYMBOL_TRASH);
+  lv_obj_center(lblPrinterDelete);
+
+  taPrinterName = makeSettingsField(tabPrinter, T(StrId::PrinterName), 48);
+  taPrinterAddress = makeSettingsField(tabPrinter, T(StrId::PrinterAddress), 96);
+
+  lblPrinterError = lv_label_create(tabPrinter);
+  lv_obj_set_width(lblPrinterError, SCREEN_WIDTH - 24);
+  lv_label_set_long_mode(lblPrinterError, LV_LABEL_LONG_DOT);
+  lv_obj_set_style_text_font(lblPrinterError, &lv_font_montserrat_14, 0);
+  lv_obj_set_style_text_color(lblPrinterError, lv_color_hex(0xD03030), 0);
+  lv_obj_align(lblPrinterError, LV_ALIGN_TOP_LEFT, 0, 142);
+  lv_label_set_text(lblPrinterError, "");
+
+  // Spoolman: address, on/off
+  taSpoolmanAddress = makeSettingsField(tabSpoolman, T(StrId::SpoolmanAddress), 0);
+
+  lv_obj_t *lblUseSpoolman = lv_label_create(tabSpoolman);
+  lv_label_set_text(lblUseSpoolman, T(StrId::UseSpoolman));
+  lv_obj_align(lblUseSpoolman, LV_ALIGN_TOP_LEFT, 0, 62);
+  swUseSpoolman = lv_switch_create(tabSpoolman);
+  lv_obj_align(swUseSpoolman, LV_ALIGN_TOP_LEFT, 185, 56);
+  lv_obj_add_event_cb(swUseSpoolman, useSpoolmanToggleCb, LV_EVENT_VALUE_CHANGED, nullptr);
+
   lv_obj_t *btnBack = lv_btn_create(scrSettings);
-  lv_obj_set_size(btnBack, 170, 50);
-  lv_obj_align(btnBack, LV_ALIGN_BOTTOM_RIGHT, -15, -10);
-  lv_obj_add_event_cb(btnBack, backButtonCb, LV_EVENT_CLICKED, nullptr);
+  lv_obj_set_size(btnBack, 170, backH);
+  lv_obj_align(btnBack, LV_ALIGN_BOTTOM_RIGHT, -15, -5);
+  lv_obj_add_event_cb(btnBack, settingsBackCb, LV_EVENT_CLICKED, nullptr);
   lv_obj_t *lblBack = lv_label_create(btnBack);
   lv_label_set_text(lblBack, T(StrId::Back));
   lv_obj_center(lblBack);
 
+  // Created last so that it is drawn above the tabs. Shared by all text fields.
   keyboard = lv_keyboard_create(scrSettings);
+  lv_obj_set_size(keyboard, SCREEN_WIDTH, 140);
+  lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
   lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_event_cb(keyboard, keyboardReadyCb, LV_EVENT_READY, nullptr);
+
+  selectPrinter(settings.printers.empty() ? -1 : 0);
 }
 
 void uiInit() {
