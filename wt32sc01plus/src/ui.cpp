@@ -715,8 +715,11 @@ static void commitPrinterFields() {
 }
 
 static void printerSelectedCb(lv_event_t *e) {
+  // Read the choice first: committing refreshes the dropdown, which resets it
+  // to the previously selected printer.
+  int chosen = lv_dropdown_get_selected(ddPrinter);
   commitPrinterFields();
-  selectPrinter(lv_dropdown_get_selected(ddPrinter));
+  selectPrinter(chosen);
 }
 
 static void printerNewCb(lv_event_t *e) {
