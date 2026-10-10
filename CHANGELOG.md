@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The status line is at the bottom edge of the main and edit screens.
+- The edit screen has a "Read tag" button next to "Write tag" and "Back", to read another tag without
+  returning to the main screen.
 - The settings screen has tabs like the RFIDwisp app: General (screen sleep, firmware update and version),
   WiFi (status, reconfigure network), Printer and Spoolman (address, use Spoolman).
 

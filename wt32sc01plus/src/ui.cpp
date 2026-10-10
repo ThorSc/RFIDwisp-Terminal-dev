@@ -808,7 +808,8 @@ static void buildMainScreen() {
   lv_label_set_text(lblStatus, T(StrId::Ready));
   lv_obj_set_width(lblStatus, SCREEN_WIDTH - 40);
   lv_label_set_long_mode(lblStatus, LV_LABEL_LONG_WRAP);
-  lv_obj_align(lblStatus, LV_ALIGN_TOP_MID, 0, 60);
+  lv_obj_set_style_text_align(lblStatus, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(lblStatus, LV_ALIGN_BOTTOM_MID, 0, -10);
 
   struct Entry { const char *text; lv_event_cb_t cb; int x; };
   Entry entries[2] = {
@@ -833,7 +834,7 @@ static void buildEditScreen() {
   //   1: Spool | Filament            (Spoolman mode only)
   //   2: Material | Colour
   //   3: Spoolman vendor (Vendor in plain mode) | Spool number
-  //   4: Weight (+ status line)
+  //   4: Weight
   const int leftX = 15, rightX = 250, colW = 215;
   const int rowY[4] = {2, 58, 114, 170};
   const int controlDy = 17;
@@ -904,29 +905,32 @@ static void buildEditScreen() {
   makeLabel(rightX, rowY[2], (String(T(StrId::SpoolNumber)) + " (0-999)").c_str());
   sbSpoolNumber = makeNumberField(scrEdit, rightX, rowY[2] + controlDy, 140);
 
-  // Row 4: weight, with the status line to its right
+  // Row 4: weight. The status line sits at the bottom edge of the screen.
   sbWeight = labeledNumberField(scrEdit, T(StrId::Weight), leftX, rowY[3]);
 
   lblEditStatus = lv_label_create(scrEdit);
-  lv_obj_set_width(lblEditStatus, 295);
-  lv_label_set_long_mode(lblEditStatus, LV_LABEL_LONG_WRAP);
-  lv_obj_align(lblEditStatus, LV_ALIGN_TOP_LEFT, 170, rowY[3] + controlDy + 2);
+  lv_obj_set_width(lblEditStatus, SCREEN_WIDTH - 2 * leftX);
+  lv_label_set_long_mode(lblEditStatus, LV_LABEL_LONG_SCROLL_CIRCULAR); // one line; long texts scroll
+  lv_obj_align(lblEditStatus, LV_ALIGN_BOTTOM_LEFT, leftX, -6);
 
-  lv_obj_t *btnSave = lv_btn_create(scrEdit);
-  lv_obj_set_size(btnSave, colW, 46);
-  lv_obj_align(btnSave, LV_ALIGN_BOTTOM_LEFT, leftX, -8);
-  lv_obj_add_event_cb(btnSave, saveButtonCb, LV_EVENT_CLICKED, nullptr);
-  lv_obj_t *lblSave = lv_label_create(btnSave);
-  lv_label_set_text(lblSave, T(StrId::WriteTag));
-  lv_obj_center(lblSave);
-
-  lv_obj_t *btnBack = lv_btn_create(scrEdit);
-  lv_obj_set_size(btnBack, colW, 46);
-  lv_obj_align(btnBack, LV_ALIGN_BOTTOM_RIGHT, -15, -8);
-  lv_obj_add_event_cb(btnBack, backButtonCb, LV_EVENT_CLICKED, nullptr);
-  lv_obj_t *lblBack = lv_label_create(btnBack);
-  lv_label_set_text(lblBack, T(StrId::Back));
-  lv_obj_center(lblBack);
+  // Bottom button row: read another tag without going back to the main screen.
+  const int btnGap = 10;
+  const int btnW = (SCREEN_WIDTH - 2 * leftX - 2 * btnGap) / 3;
+  struct EditButton { const char *text; lv_event_cb_t cb; };
+  const EditButton editButtons[3] = {
+      {T(StrId::ReadTag), readButtonCb},
+      {T(StrId::WriteTag), saveButtonCb},
+      {T(StrId::Back), backButtonCb},
+  };
+  for (int i = 0; i < 3; i++) {
+    lv_obj_t *btn = lv_btn_create(scrEdit);
+    lv_obj_set_size(btn, btnW, 46);
+    lv_obj_align(btn, LV_ALIGN_BOTTOM_LEFT, leftX + i * (btnW + btnGap), -30);
+    lv_obj_add_event_cb(btn, editButtons[i].cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *label = lv_label_create(btn);
+    lv_label_set_text(label, editButtons[i].text);
+    lv_obj_center(label);
+  }
 
   uiSetSpoolmanMode(false);
 }
