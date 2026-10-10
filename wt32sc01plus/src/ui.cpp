@@ -16,8 +16,8 @@
 // Implemented in main.cpp: performs the actual RC522 read/write and calls
 // uiSetStatus() / uiShowSpool() with the result.
 void handleReadTagRequested();
+void handleEditTagRequested();
 void handleWriteTagRequested();
-void handleWriteScreenOpened();
 void handleUpdateButtonPressed();
 void handleInstallUpdateRequested();
 
@@ -166,7 +166,7 @@ static void openColorOverlay(lv_event_t *e) {
 
 static void readButtonCb(lv_event_t *e) { handleReadTagRequested(); }
 
-static void writeButtonCb(lv_event_t *e) { handleWriteScreenOpened(); }
+static void editButtonCb(lv_event_t *e) { handleEditTagRequested(); }
 
 static void backButtonCb(lv_event_t *e) { lv_scr_load(scrMain); }
 
@@ -811,20 +811,16 @@ static void buildMainScreen() {
   lv_obj_set_style_text_align(lblStatus, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(lblStatus, LV_ALIGN_BOTTOM_MID, 0, -10);
 
-  struct Entry { const char *text; lv_event_cb_t cb; int x; };
-  Entry entries[2] = {
-      {T(StrId::ReadTag), readButtonCb, -110},
-      {T(StrId::WriteTag), writeButtonCb, 110},
-  };
-  for (const Entry &entry : entries) {
-    lv_obj_t *btn = lv_btn_create(scrMain);
-    lv_obj_set_size(btn, 190, 90);
-    lv_obj_align(btn, LV_ALIGN_CENTER, entry.x, 45);
-    lv_obj_add_event_cb(btn, entry.cb, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *label = lv_label_create(btn);
-    lv_label_set_text(label, entry.text);
-    lv_obj_center(label);
-  }
+  // A tag put on the reader is read automatically and opens the edit screen;
+  // the button opens it as well, with empty fields, whether a tag lies on the
+  // reader or not.
+  lv_obj_t *btn = lv_btn_create(scrMain);
+  lv_obj_set_size(btn, 240, 90);
+  lv_obj_align(btn, LV_ALIGN_CENTER, 0, 45);
+  lv_obj_add_event_cb(btn, editButtonCb, LV_EVENT_CLICKED, nullptr);
+  lv_obj_t *label = lv_label_create(btn);
+  lv_label_set_text(label, T(StrId::EditTag));
+  lv_obj_center(label);
 }
 
 static void buildEditScreen() {

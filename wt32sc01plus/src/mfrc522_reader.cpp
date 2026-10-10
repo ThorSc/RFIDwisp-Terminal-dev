@@ -41,6 +41,15 @@ bool Mfrc522Reader::waitForTag(uint32_t timeoutMs) {
       _tagPresent = true;
       return true;
     }
+    // A tag that was read earlier is halted and lies on the reader still:
+    // wake it up instead of waiting for it to be taken away and put back.
+    byte atqa[2];
+    byte atqaSize = sizeof(atqa);
+    if (rc522.PICC_WakeupA(atqa, &atqaSize) == MFRC522::StatusCode::STATUS_OK &&
+        rc522.PICC_ReadCardSerial()) {
+      _tagPresent = true;
+      return true;
+    }
     delay(50);
   } while (millis() < deadline);
   return false;

@@ -75,6 +75,8 @@ static const char *tagResultMessage(TagResult result) {
 //
 // [detected]: the tag was already found by the automatic check, so there is
 // nothing to wait for.
+static void openEmptyEditScreen(const char *message);
+
 static void readTagAndShow(bool detected) {
   if (!detected) {
     uiSetStatus(T(StrId::StatusHoldTag));
@@ -93,13 +95,15 @@ static void readTagAndShow(bool detected) {
     return;
   }
 
+  // A blank tag or one without valid spool data cannot be edited, but it can
+  // be written: open the empty form and say why it is empty.
   FilamentSpool spool;
   if (FilamentSpool::isBlankTagBytes(raw)) {
-    uiSetStatus(T(StrId::TagBlank));
+    openEmptyEditScreen(T(StrId::TagBlank));
     return;
   }
   if (!FilamentSpool::fromTagBytes(raw, spool)) {
-    uiSetStatus(T(StrId::ErrorUnknownTag));
+    openEmptyEditScreen(T(StrId::ErrorUnknownTag));
     return;
   }
 
@@ -114,15 +118,15 @@ static void readTagAndShow(bool detected) {
 
 void handleReadTagRequested() { readTagAndShow(false); }
 
-// Called by the main screen's "Write tag" button, before the edit screen is
-// shown - refreshes the Spoolman lists (if active) so the Spool selector is
-// current, then hands off to the UI.
-void handleWriteScreenOpened() {
+// Shows the edit screen with empty fields for writing a new tag - refreshes
+// the Spoolman lists (if active) so the Spool selector is current, then hands
+// off to the UI.
+static void openEmptyEditScreen(const char *message) {
   lastReadSpoolNumber = -1;
   lastReadVendorCode = -1;
   bool active = refreshSpoolmanData();
   uiSetSpoolmanMode(active);
-  if (active || !spoolmanActive()) uiSetStatus(T(StrId::Ready));
+  if (active || !spoolmanActive()) uiSetStatus(message);
   uiShowEditScreenForWrite();
 }
 
@@ -171,6 +175,10 @@ static void resolveSpoolmanFields(FilamentSpool &spool) {
   spool.internalVendorId = (uint8_t)vendorId;
   uiSetStatus(T(StrId::SpoolCreated));
 }
+
+// The main screen's "Edit tag" button: the edit screen with empty fields, for
+// writing a tag (a tag on the reader never gets here, it is read and shown).
+void handleEditTagRequested() { openEmptyEditScreen(T(StrId::Ready)); }
 
 // Called by the edit screen's "Write tag" button.
 // Limits of what fits on the tag, as enforced by the PC app

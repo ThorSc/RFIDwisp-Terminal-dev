@@ -12,7 +12,7 @@ void uiInit();
 void uiShowSpool(const FilamentSpool &spool);
 
 // Shows the edit screen for writing a new tag (blank fields, "New spool"
-// selected). Called by main.cpp's handleWriteScreenOpened after refreshing
+// selected). Called by main.cpp's openEmptyEditScreen after refreshing
 // the Spoolman caches (if Spoolman is active).
 void uiShowEditScreenForWrite();
 

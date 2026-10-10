@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The main screen has one button, "Edit tag"; "Write tag" and "Read tag" are gone from there. "Edit tag" opens
+  the edit screen with empty fields, whether a tag lies on the reader or not (a tag on the reader is read and
+  shown on its own). A blank tag, or one without valid spool data, also opens the empty edit screen, with the
+  reason in the status line.
+- A tag that was read earlier and still lies on the reader is found again by "Write tag" / "Read tag" on the
+  edit screen without taking it away first.
 - A tag put on the reader is detected automatically while the main screen is showing: the terminal reads it and
   opens the edit screen with its data, no button press needed. The "Read tag" button still works.
   The tag has to be taken away before the same tag is read again.

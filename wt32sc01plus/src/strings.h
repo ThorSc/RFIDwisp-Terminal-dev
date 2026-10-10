@@ -76,6 +76,7 @@ enum class StrId {
   PrinterAddress,
   FieldRequired,
   AddressInvalid,
+  EditTag,
   Count // sentinel, not a real string
 };
 

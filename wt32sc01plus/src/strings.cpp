@@ -70,6 +70,7 @@ static const char *const keys[(int)StrId::Count] = {
   "printer_address",
   "field_required",
   "address_invalid",
+  "edit_tag",
 };
 
 static const char *const defaultStrings[(int)StrId::Count] = {
@@ -138,6 +139,7 @@ static const char *const defaultStrings[(int)StrId::Count] = {
   "Moonraker address, e.g. http://192.168.1.50:7125",
   "Name is required.",
   "Invalid address (e.g. http://192.168.1.50:7125).",
+  "Edit tag",
 };
 // clang-format on
 

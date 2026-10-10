@@ -148,16 +148,21 @@ No firmware rebuild needed to change or remove the override afterwards.
 
 ## What it does so far
 
-- **Read tag**: waits for a tag, authenticates sector 1 with the same
+- **Edit tag**: a tag put on the reader while the main screen is showing is
+  read automatically. The "Edit tag" button opens the edit screen with empty
+  fields, with or without a tag on the reader. Reading authenticates sector 1 with the same
   default-key list as the Flutter app (`FF FF FF FF FF FF`, all-zero, the
   MAD key, then `B0 B1 B2 B3 B4 B5`, each tried as key A then key B), reads
-  the 16-byte payload from block 4, and shows it on the spool edit screen if
-  it decodes to a known material/colour/vendor.
-- **Write tag**: opens the spool edit screen (material, colour, vendor,
-  spool number, weight as dropdowns/spinboxes), then writes the encoded 16
-  bytes to block 4 and reads them back to confirm.
-- **Settings screen**: shows Wi-Fi status and the configured Spoolman
-  address, a "Use Spoolman" toggle, and "Reconfigure network".
+  the 16-byte payload from block 4, and shows it on the spool edit screen
+  (material, colour, vendor, spool number, weight as dropdowns/spinboxes). A
+  blank tag, or one without valid spool data, opens the empty edit screen.
+- **Write tag** (edit screen): writes the encoded 16 bytes to block 4 and
+  reads them back to confirm. **Read tag** on the same screen reads another
+  tag without going back to the main screen.
+- **Settings screen**, in tabs like the app: *General* (screen sleep, check
+  for firmware updates, firmware version), *WiFi* (status, "Reconfigure
+  network"), *Printer* (printers with name and Moonraker address) and
+  *Spoolman* (address, "Use Spoolman").
 - **Spoolman-integrated write/edit screen**: when Spoolman is active, the
   edit screen's Vendor + Spool number fields are replaced by a **Spool**
   selector ("New spool" + every cached Spoolman spool) and a **Spoolman
