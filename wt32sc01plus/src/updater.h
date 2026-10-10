@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 // Firmware updates from the GitHub releases of the distribution repo
-// (ThorSc/RFIDwisp-ESP32): looks up the latest release, and if it is newer
+// (ThorSc/RFIDwisp-Terminal): looks up the latest release, and if it is newer
 // than the running firmware, downloads its firmware image and flashes it
 // into the other OTA partition. Unlike ota_setup.h (a push from the PC over
 // the local network) this is the device pulling the update itself.

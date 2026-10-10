@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared by RFIDwisp-dev (test/tag_vectors_test.dart) and RFIDwisp-ESP32-dev (wt32sc01plus/test/test_tag_vectors). The two copies must be identical; the one in RFIDwisp-dev is authoritative. bytes = the 16 tag bytes as 32 hex digits. internalVendorId null = no Spoolman vendor (byte 13 = 0). spool null = the payload is not a valid spool.",
+  "_comment": "Shared by RFIDwisp-dev (test/tag_vectors_test.dart) and RFIDwisp-Terminal-dev (wt32sc01plus/test/test_tag_vectors). The two copies must be identical; the one in RFIDwisp-dev is authoritative. bytes = the 16 tag bytes as 32 hex digits. internalVendorId null = no Spoolman vendor (byte 13 = 0). spool null = the payload is not a valid spool.",
   "roundtrip": [
     {"name": "QIDI PETG Basic, spool 252", "spool": {"material": "PETG Basic", "colorHex": "#228332", "vendor": "QIDI", "spoolNumber": 252, "internalVendorId": null, "lastWeightGrams": 0}, "bytes": "270901000000000000000000000000fc"},
     {"name": "GENERIC PLA, last weight 850 g, spool 1", "spool": {"material": "PLA Rapido", "colorHex": "#FAFAFA", "vendor": "GENERIC", "spoolNumber": 1, "internalVendorId": null, "lastWeightGrams": 850}, "bytes": "01010000000000000000000352000001"},

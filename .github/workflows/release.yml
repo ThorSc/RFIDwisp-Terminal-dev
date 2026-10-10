@@ -2,7 +2,7 @@ name: Build and publish release
 
 # Runs on every push to master that touches the firmware or the VERSION
 # file. The version in VERSION decides whether that push makes a release:
-# if the public distribution repo ThorSc/RFIDwisp-ESP32 has no release
+# if the public distribution repo ThorSc/RFIDwisp-Terminal has no release
 # v<version> yet, the firmware is built and published as that release (and
 # the source commit is tagged v<version>); if it already has one, the run
 # stops after the first job and builds nothing. So a release happens by
@@ -21,7 +21,7 @@ name: Build and publish release
 # already has a release.
 #
 # Setup required once:
-#   1. Create the public repo ThorSc/RFIDwisp-ESP32 with at least one commit
+#   1. Create the public repo ThorSc/RFIDwisp-Terminal with at least one commit
 #      (e.g. a README) - creating a release fails on a completely empty
 #      repo ("Repository is empty").
 #   2. Create a classic GitHub PAT (Settings -> Developer settings ->
@@ -60,7 +60,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DIST_REPO: ThorSc/RFIDwisp-ESP32
+  DIST_REPO: ThorSc/RFIDwisp-Terminal
   PIO_ENV: wt32-sc01-plus
 
 jobs:

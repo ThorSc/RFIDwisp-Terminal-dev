@@ -14,7 +14,7 @@
 const char *const kFirmwareAssetName = "RFIDwisp-ESP32-wt32sc01plus-firmware.bin";
 
 static const char *kLatestReleaseUrl =
-    "https://api.github.com/repos/ThorSc/RFIDwisp-ESP32/releases/latest";
+    "https://api.github.com/repos/ThorSc/RFIDwisp-Terminal/releases/latest";
 static const uint32_t kTimeoutMs = 10000;
 
 // The CA bundle that is part of the Arduino-ESP32 core (Mozilla's roots).
@@ -62,7 +62,7 @@ static bool beginGithub(HTTPClient &http, WiFiClientSecure &client, const String
   http.setTimeout(kTimeoutMs);
   http.setConnectTimeout(kTimeoutMs);
   http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS); // release files redirect to a CDN
-  http.setUserAgent("RFIDwisp-ESP32");
+  http.setUserAgent("RFIDwisp-Terminal");
   return http.begin(client, url);
 }
 

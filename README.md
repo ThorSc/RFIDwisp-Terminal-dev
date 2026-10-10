@@ -3,7 +3,7 @@
 ## Downloads
 
 Prebuilt firmware is published as a release to the distribution repo
-[`ThorSc/RFIDwisp-ESP32`](https://github.com/ThorSc/RFIDwisp-ESP32/releases/latest)
+[`ThorSc/RFIDwisp-Terminal`](https://github.com/ThorSc/RFIDwisp-Terminal/releases/latest)
 whenever a push to `master` carries a new `VERSION` (see "Releasing" below).
 This repo is the source those releases are built from (see "License" below
 for why it's public: two statically-linked dependencies are LGPL-2.1).
@@ -121,7 +121,7 @@ one is set.
 ## Updating from GitHub
 
 At startup (if Wi-Fi is connected) the device checks the latest release of
-[`ThorSc/RFIDwisp-ESP32`](https://github.com/ThorSc/RFIDwisp-ESP32/releases/latest)
+[`ThorSc/RFIDwisp-Terminal`](https://github.com/ThorSc/RFIDwisp-Terminal/releases/latest)
 and, if it is newer than the running firmware, asks whether to install it.
 **Settings** has the same: a "Check at startup" switch and a button that checks
 right away and then installs the version it found. The device downloads the
@@ -203,7 +203,7 @@ desktop window auto-sizer, and the GitHub-release update checker.
 
 ## Releasing
 
-Releases are published to the public [`ThorSc/RFIDwisp-ESP32`](https://github.com/ThorSc/RFIDwisp-ESP32)
+Releases are published to the public [`ThorSc/RFIDwisp-Terminal`](https://github.com/ThorSc/RFIDwisp-Terminal)
 repo by [`.github/workflows/release.yml`](.github/workflows/release.yml),
 mirroring the pattern used by the sibling Flutter project's
 `RFIDwisp-dev`/`RFIDwisp` repos: this source repo stays private, only built
