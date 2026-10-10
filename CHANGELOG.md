@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-11
+
 ### Changed
 
 - The main screen has one button, "Edit tag"; "Write tag" and "Read tag" are gone from there. "Edit tag" opens
