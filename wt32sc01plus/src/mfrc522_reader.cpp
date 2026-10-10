@@ -46,6 +46,16 @@ bool Mfrc522Reader::waitForTag(uint32_t timeoutMs) {
   return false;
 }
 
+bool Mfrc522Reader::pollForTag() {
+  _tagPresent = rc522.PICC_IsNewCardPresent() && rc522.PICC_ReadCardSerial();
+  return _tagPresent;
+}
+
+void Mfrc522Reader::release() {
+  rc522.PICC_HaltA();
+  rc522.PCD_StopCrypto1();
+}
+
 bool Mfrc522Reader::authenticateSector1() {
   if (!_tagPresent) return false;
   MFRC522::MIFARE_Key key;
@@ -66,8 +76,16 @@ bool Mfrc522Reader::authenticateSector1() {
 
 TagResult Mfrc522Reader::readSpoolBytes(uint8_t out[qidiTagLength]) {
   if (!_tagPresent) return TagResult::NoTag;
-  if (rc522.uid.size != 4) return TagResult::NotMifareClassic1k; // UL/DESFire etc.
-  if (!authenticateSector1()) return TagResult::AuthenticationFailed;
+  // Whatever happens next, the tag ends up halted so that pollForTag() does
+  // not find it again until it was taken away.
+  if (rc522.uid.size != 4) { // UL/DESFire etc.
+    release();
+    return TagResult::NotMifareClassic1k;
+  }
+  if (!authenticateSector1()) {
+    release();
+    return TagResult::AuthenticationFailed;
+  }
 
   TagResult result = TagResult::Ok;
   uint8_t buffer[18]; // MIFARE_Read wants room for the trailing CRC_A
@@ -85,8 +103,14 @@ TagResult Mfrc522Reader::readSpoolBytes(uint8_t out[qidiTagLength]) {
 
 TagResult Mfrc522Reader::writeSpoolBytes(const uint8_t data[qidiTagLength]) {
   if (!_tagPresent) return TagResult::NoTag;
-  if (rc522.uid.size != 4) return TagResult::NotMifareClassic1k;
-  if (!authenticateSector1()) return TagResult::AuthenticationFailed;
+  if (rc522.uid.size != 4) {
+    release();
+    return TagResult::NotMifareClassic1k;
+  }
+  if (!authenticateSector1()) {
+    release();
+    return TagResult::AuthenticationFailed;
+  }
 
   TagResult result = TagResult::Ok;
   if (rc522.MIFARE_Write(qidiTagBlock, (uint8_t *)data, qidiTagLength) != MFRC522::StatusCode::STATUS_OK) {

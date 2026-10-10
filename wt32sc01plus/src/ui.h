@@ -44,6 +44,10 @@ int uiSelectedFilamentId();
 // selected); -1 if none of the cached vendors is selected.
 int uiSelectedSpoolmanVendorId();
 
+// True while the main screen is showing and nothing covers it (no dialog, no
+// "please wait"): the only time a tag put on the reader is read automatically.
+bool uiIsMainScreenIdle();
+
 // Updates the status line on the main screen.
 void uiSetStatus(const char *text);
 

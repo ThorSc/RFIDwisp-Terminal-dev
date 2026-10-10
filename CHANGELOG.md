@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- A tag put on the reader is detected automatically while the main screen is showing: the terminal reads it and
+  opens the edit screen with its data, no button press needed. The "Read tag" button still works.
+  The tag has to be taken away before the same tag is read again.
 - The status line is at the bottom edge of the main and edit screens.
 - The edit screen has a "Read tag" button next to "Write tag" and "Back", to read another tag without
   returning to the main screen.

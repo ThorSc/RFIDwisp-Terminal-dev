@@ -18,6 +18,11 @@ public:
   // Waits up to timeoutMs for a tag; true if one answered.
   bool waitForTag(uint32_t timeoutMs = 3000);
 
+  // Non-blocking: true if a tag that has not been handled yet is on the
+  // reader (a tag that was read or written is halted and not found again until
+  // it was taken away and put back).
+  bool pollForTag();
+
   // Reads the 16-byte spool payload from qidiTagBlock. The tag must already
   // have answered waitForTag().
   TagResult readSpoolBytes(uint8_t out[qidiTagLength]);
@@ -26,6 +31,7 @@ public:
   TagResult writeSpoolBytes(const uint8_t data[qidiTagLength]);
 
 private:
+  void release(); // halts the tag and stops the crypto
   bool authenticateSector1();
 
   bool _tagPresent = false;

@@ -72,13 +72,18 @@ static const char *tagResultMessage(TagResult result) {
 // Called by the UI's "Read tag" button. Blocking: the display will not
 // update again until this returns, which is fine for a single explicit
 // user action but would need a background task for anything longer-running.
-void handleReadTagRequested() {
-  uiSetStatus(T(StrId::StatusHoldTag));
-  displayLoop();
+//
+// [detected]: the tag was already found by the automatic check, so there is
+// nothing to wait for.
+static void readTagAndShow(bool detected) {
+  if (!detected) {
+    uiSetStatus(T(StrId::StatusHoldTag));
+    displayLoop();
 
-  if (!reader.waitForTag(3000)) {
-    uiSetStatus(tagResultMessage(TagResult::NoTag));
-    return;
+    if (!reader.waitForTag(3000)) {
+      uiSetStatus(tagResultMessage(TagResult::NoTag));
+      return;
+    }
   }
 
   uint8_t raw[qidiTagLength];
@@ -106,6 +111,8 @@ void handleReadTagRequested() {
   if (active || !spoolmanActive()) uiSetStatus(T(StrId::TagRead));
   uiShowSpool(spool);
 }
+
+void handleReadTagRequested() { readTagAndShow(false); }
 
 // Called by the main screen's "Write tag" button, before the edit screen is
 // shown - refreshes the Spoolman lists (if active) so the Spool selector is
@@ -304,6 +311,7 @@ static void runPendingUpdateAction() {
 }
 
 static bool wifiConnected = false;
+static bool readerOk = false; // the RC522 answered at startup
 
 static void connectWifi() {
   uiSetStatus("Connecting to Wi-Fi...");
@@ -321,6 +329,23 @@ static void connectWifi() {
   }
 }
 
+// How often the main screen looks for a tag on the reader.
+static const uint32_t kTagPollIntervalMs = 250;
+
+// Reads a tag that was put on the reader while the main screen is idle and
+// opens the edit screen with its data, without any button press.
+static void pollForTag() {
+  static uint32_t lastPollMs = 0;
+  if (millis() - lastPollMs < kTagPollIntervalMs) return;
+  lastPollMs = millis();
+
+  if (!readerOk || pendingAction != UpdateAction::None || !uiIsMainScreenIdle()) return;
+  if (!reader.pollForTag()) return;
+
+  displayWake();
+  readTagAndShow(true);
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -333,10 +358,11 @@ void setup() {
 
   connectWifi();
 
-  if (!reader.begin()) {
+  readerOk = reader.begin();
+  if (!readerOk) {
     uiSetStatus(T(StrId::Rc522NotFound));
   } else {
-    uiSetStatus(T(StrId::Ready));
+    uiSetStatus(T(StrId::StatusHoldTag));
   }
 
   if (wifiConnected && settings.checkForUpdates) checkForUpdate(true);
@@ -345,6 +371,7 @@ void setup() {
 void loop() {
   displayLoop();
   runPendingUpdateAction();
+  pollForTag();
   otaLoop();
   delay(5);
 }

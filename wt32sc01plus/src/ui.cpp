@@ -1077,6 +1077,10 @@ void uiInit() {
   lv_scr_load(scrMain);
 }
 
+bool uiIsMainScreenIdle() {
+  return lv_scr_act() == scrMain && lv_obj_get_child_cnt(lv_layer_top()) == 0;
+}
+
 void uiSetStatus(const char *text) {
   lv_label_set_text(lblStatus, text);
   if (lblEditStatus) lv_label_set_text(lblEditStatus, text);

@@ -87,6 +87,14 @@ static void wakeScreen() {
   digitalWrite(TFT_BL, HIGH);
 }
 
+void displayWake() {
+  if (sleeping) {
+    wakeScreen();
+  } else {
+    lastActivityMs = millis();
+  }
+}
+
 void displaySetSleepTimeout(uint8_t minutes) {
   sleepTimeoutMs = (uint32_t)minutes * 60000UL;
   lastActivityMs = millis();

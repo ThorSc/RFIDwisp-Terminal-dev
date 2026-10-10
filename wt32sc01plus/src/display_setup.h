@@ -13,3 +13,7 @@ void displayLoop();
 // off; the next touch wakes it (and is not passed on to the UI, so waking
 // the screen cannot press a button by accident). 0 disables sleeping.
 void displaySetSleepTimeout(uint8_t minutes);
+
+// Switches the backlight on (if the screen sleeps) and restarts the sleep
+// timer, e.g. when a tag is put on the reader.
+void displayWake();
