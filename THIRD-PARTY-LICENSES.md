@@ -11,6 +11,7 @@ what that means for redistributing the built firmware.
 | [Arduino core for ESP32](https://github.com/espressif/arduino-esp32) (Espressif Systems) | (c) Espressif Systems and contributors | LGPL-2.1-or-later |
 | [Arduino_MFRC522v2](https://github.com/OSSLibraries/Arduino_MFRC522v2) | (c) OSSLibraries contributors | LGPL-2.1 |
 | [LVGL](https://github.com/lvgl/lvgl) | (c) 2021 LVGL Kft | MIT |
+| [Montserrat](https://github.com/JulietaUla/Montserrat) (font, `src/fonts/Montserrat-Medium.ttf`, as shipped with LVGL) | (c) 2011 The Montserrat Project Authors | SIL Open Font License 1.1 |
 | [ArduinoJson](https://github.com/bblanchon/ArduinoJson) | (c) 2014-2024 Benoit Blanchon | MIT |
 | [WiFiManager](https://github.com/tzapu/WiFiManager) | (c) 2015 tzapu | MIT |
 | [LovyanGFX](https://github.com/lovyan03/LovyanGFX) | (c) 2020 lovyan03; includes code from Adafruit_ILI9341 | MIT and BSD-2-Clause (FreeBSD License) |

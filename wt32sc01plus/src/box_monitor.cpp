@@ -1,6 +1,7 @@
 #include "box_monitor.h"
 #include "moonraker_client.h"
 #include "spoolman_client.h"
+#include "strings.h"
 #include <WiFi.h>
 #include <map>
 #include <vector>
@@ -78,7 +79,7 @@ static void workerTask(void *) {
     result.generation = request.generation;
     result.box = request.box;
     if (WiFi.status() != WL_CONNECTED) {
-      result.error = "Not connected to Wi-Fi.";
+      result.error = T(StrId::ErrWifiNotConnected);
     } else {
       resolve(request, result);
     }

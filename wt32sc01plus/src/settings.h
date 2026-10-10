@@ -20,6 +20,7 @@ struct AppSettings {
   uint8_t sleepMinutes = 10; // screen sleep timeout, 0-60 minutes, 0 = never
   bool checkForUpdates = true; // look for a new firmware version at startup
   String otaPassword = ""; // OTA update password, empty = no auth required
+  String language = "en"; // UI language, see languages[] in strings.cpp
   String selectedPrinterId = ""; // the printer shown on the main screen
   std::vector<Printer> printers; // only complete entries (name and address) are stored
 

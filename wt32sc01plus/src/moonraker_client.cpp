@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include "strings.h"
 
 static const uint32_t kTimeoutMs = 5000;
 
@@ -52,12 +53,12 @@ QidiBoxResult moonrakerReadBox(const String &address, int box) {
   http.setConnectTimeout(kTimeoutMs);
   http.useHTTP10(true); // no chunked transfer: the stream is the plain JSON
   if (!http.begin(url)) {
-    result.error = "Could not open connection.";
+    result.error = T(StrId::ErrOpenConnection);
     return result;
   }
   int status = http.GET();
   if (status <= 0) {
-    result.error = "No response: " + http.errorToString(status);
+    result.error = String(T(StrId::ErrNoResponse)) + " " + http.errorToString(status);
     http.end();
     return result;
   }
@@ -85,7 +86,7 @@ QidiBoxResult moonrakerReadBox(const String &address, int box) {
       deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
   http.end();
   if (parseError) {
-    result.error = "Malformed response.";
+    result.error = T(StrId::ErrMalformed);
     return result;
   }
 

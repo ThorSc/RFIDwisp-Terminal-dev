@@ -319,11 +319,28 @@ static void runPendingUpdateAction() {
   if (action == UpdateAction::Install) installUpdate();
 }
 
+// The language chosen in the settings; applied by restarting (the texts are
+// built once). Done in loop(), not in the touch handler: the "restarting"
+// overlay could not be drawn there.
+static String pendingLanguage;
+
+void handleLanguageSelected(const char *code) { pendingLanguage = code; }
+
+static void applyPendingLanguage() {
+  if (pendingLanguage.isEmpty()) return;
+  settings.language = pendingLanguage;
+  settings.save();
+  uiShowBusy(T(StrId::Restarting));
+  displayLoop();
+  delay(400);
+  ESP.restart();
+}
+
 static bool wifiConnected = false;
 static bool readerOk = false; // the RC522 answered at startup
 
 static void connectWifi() {
-  uiSetStatus("Connecting to Wi-Fi...");
+  uiSetStatus(T(StrId::ConnectingWifi));
   displayLoop();
 
   bool connected = wifiSetupConnect();
@@ -334,7 +351,7 @@ static void connectWifi() {
     otaSetup();
     wifiConnected = true;
   } else {
-    uiSetWifiStatus("Not connected - join \"RFIDwisp-Setup\" to configure.");
+    uiSetWifiStatus(T(StrId::WifiNotConnected));
   }
 }
 
@@ -478,8 +495,8 @@ void handleSettingsClosed() {
 void setup() {
   Serial.begin(115200);
 
-  stringsInit();
   settings.load();
+  stringsInit(); // after the settings: they hold the language
 
   displaySetup();
   displaySetSleepTimeout(settings.sleepMinutes);
@@ -504,6 +521,7 @@ void setup() {
 void loop() {
   displayLoop();
   runPendingUpdateAction();
+  applyPendingLanguage();
   pollForTag();
   pollBoxResult();
   otaLoop();

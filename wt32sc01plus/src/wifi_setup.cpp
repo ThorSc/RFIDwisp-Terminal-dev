@@ -1,5 +1,6 @@
 #include "wifi_setup.h"
 #include "settings.h"
+#include "strings.h"
 #include <WiFiManager.h>
 
 // Network hostname (DHCP client id / mDNS name) and OTA device name; also
@@ -15,10 +16,10 @@ bool wifiSetupConnect() {
   wm.setHostname(kNetworkHostname);
 
   WiFiManagerParameter customSpoolman(
-      "spoolman", "Spoolman address (http://ip:7912, leave empty to skip)",
+      "spoolman", T(StrId::PortalSpoolman),
       settings.spoolmanAddress.c_str(), 64);
   WiFiManagerParameter customOtaPassword(
-      "otapass", "OTA update password (leave empty for no auth)",
+      "otapass", T(StrId::PortalOtaPassword),
       settings.otaPassword.c_str(), 64);
 
   wm.addParameter(&customSpoolman);

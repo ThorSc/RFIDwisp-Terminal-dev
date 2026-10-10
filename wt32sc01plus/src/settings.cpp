@@ -15,6 +15,7 @@ void AppSettings::load() {
   otaPassword = prefs.getString("otaPass", "");
   checkForUpdates = prefs.getBool("updCheck", true);
   selectedPrinterId = prefs.getString("printerSel", "");
+  language = prefs.getString("lang", "en");
   String printersJson = prefs.getString("printers", "");
   prefs.end();
 
@@ -53,5 +54,6 @@ void AppSettings::save() const {
   serializeJson(doc, printersJson);
   prefs.putString("printers", printersJson);
   prefs.putString("printerSel", selectedPrinterId);
+  prefs.putString("lang", language);
   prefs.end();
 }

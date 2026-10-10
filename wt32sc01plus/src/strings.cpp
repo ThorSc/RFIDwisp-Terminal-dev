@@ -1,4 +1,5 @@
 #include "strings.h"
+#include "settings.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <LittleFS.h>
@@ -84,8 +85,28 @@ static const char *const keys[(int)StrId::Count] = {
   "no_box",
   "printer_not_supported",
   "printer_not_supported_info",
+  "language",
+  "restarting",
+  "connecting_wifi",
+  "wifi_not_connected",
+  "portal_spoolman",
+  "portal_ota_password",
+  "err_wifi_not_connected",
+  "err_no_time",
+  "err_open_connection",
+  "err_github_http",
+  "err_no_response",
+  "err_malformed",
+  "err_no_firmware_image",
+  "err_download_http",
+  "err_unknown_size",
+  "err_no_space",
+  "err_download_interrupted",
+  "err_flash_write",
+  "err_damaged",
 };
 
+// English: the default, always complete.
 static const char *const defaultStrings[(int)StrId::Count] = {
   "RFID Wisp Terminal",
   "Ready.",
@@ -166,14 +187,145 @@ static const char *const defaultStrings[(int)StrId::Count] = {
   "No QIDI box connected.",
   "not supported",
   "The printer is connected, but not supported: it has no QIDI box data (QIDI Plus4 / Max4 only).",
+  "Language",
+  "Restarting...",
+  "Connecting to Wi-Fi...",
+  "Not connected - join \"RFIDwisp-Setup\" to configure.",
+  "Spoolman address (http://ip:7912, leave empty to skip)",
+  "OTA update password (leave empty for no auth)",
+  "Not connected to Wi-Fi.",
+  "Could not get the time.",
+  "Could not open connection.",
+  "GitHub returned HTTP",
+  "No response:",
+  "Malformed response.",
+  "The release has no firmware image.",
+  "Download failed: HTTP",
+  "Unknown file size.",
+  "Not enough space:",
+  "Download interrupted.",
+  "Flash write failed:",
+  "The downloaded file is damaged.",
+};
+
+// German
+static const char *const germanStrings[(int)StrId::Count] = {
+  "RFID Wisp Terminal",
+  "Bereit.",
+  "Bitte Tag auflegen ...",
+  "Tag lesen",
+  "Tag schreiben",
+  "Zurück",
+  "Speichern",
+  "Spulendaten",
+  "Material",
+  "Farbe",
+  "Hersteller",
+  "Spulennummer",
+  "Gewicht (g)",
+  "Einstellungen",
+  "Kein Tag aufgelegt.",
+  "Kein MIFARE-Classic-1K-Tag.",
+  "Authentifizierung fehlgeschlagen (Sektor 1).",
+  "Lesen fehlgeschlagen.",
+  "Schreiben fehlgeschlagen oder nicht bestätigt.",
+  "Der Tag enthält keine gültigen RFIDwisp-Spulendaten.",
+  "Der Tag ist leer (nicht beschrieben).",
+  "Tag gelesen.",
+  "Tag geschrieben.",
+  "RC522 nicht gefunden - Verkabelung prüfen.",
+  "WLAN-Status",
+  "Spoolman-Adresse",
+  "Spoolman verwenden",
+  "Netzwerk neu einrichten",
+  "Spule",
+  "Neue Spule",
+  "Spoolman-Hersteller",
+  "Kein passendes Spoolman-Filament - Tag ohne Spoolman-Verknüpfung geschrieben.",
+  "Spule in Spoolman angelegt.",
+  "Spoolman-Spule konnte nicht angelegt werden - Tag ohne Spoolman-Verknüpfung geschrieben.",
+  "Lade Spoolman-Daten ...",
+  "Spoolman-Daten konnten nicht geladen werden.",
+  "Filament",
+  "(zum Vorbelegen wählen)",
+  "Das Gewicht muss zwischen 0 und 10000 g liegen.",
+  "Die Spulennummer muss zwischen 0 und 999 liegen. Spoolman-Spule:",
+  "Die Spoolman-Hersteller-ID muss zwischen 0 und 255 liegen. Hersteller-ID:",
+  "Ruhezustand nach (Min., 0 = aus)",
+  "Firmware wird aktualisiert ...",
+  "OTA-Update fehlgeschlagen.",
+  "Nach Updates suchen",
+  "Beim Start prüfen",
+  "Suche nach Updates ...",
+  "Firmware ist aktuell.",
+  "Neue Version verfügbar:",
+  "Update verfügbar",
+  "Installieren",
+  "Später",
+  "Update wird installiert - nicht ausschalten.",
+  "Suche nach Updates fehlgeschlagen:",
+  "Update fehlgeschlagen:",
+  "Firmware",
+  "Allgemein",
+  "WLAN",
+  "Drucker",
+  "Spoolman",
+  "Keine Drucker angelegt",
+  "Name",
+  "Moonraker-Adresse, z. B. http://192.168.1.50:7125",
+  "Der Name ist erforderlich.",
+  "Ungültige Adresse (z. B. http://192.168.1.50:7125).",
+  "Tag bearbeiten",
+  "Box",
+  "Material",
+  "Slot",
+  "Nr.",
+  "Hersteller",
+  "Gewicht",
+  "Kein Drucker eingerichtet - unter Einstellungen einen anlegen.",
+  "Prüfe Drucker ...",
+  "nicht verbunden",
+  "QIDI-Box-Daten nicht verfügbar:",
+  "Keine QIDI-Box angeschlossen.",
+  "nicht unterstützt",
+  "Der Drucker ist verbunden, wird aber nicht unterstützt: Er hat keine QIDI-Box-Daten (nur QIDI Plus4 / Max4).",
+  "Sprache",
+  "Neustart ...",
+  "Verbinde mit WLAN ...",
+  "Nicht verbunden - zum Einrichten mit \"RFIDwisp-Setup\" verbinden.",
+  "Spoolman-Adresse (http://ip:7912, leer lassen zum Überspringen)",
+  "OTA-Update-Passwort (leer lassen für keine Authentifizierung)",
+  "Nicht mit dem WLAN verbunden.",
+  "Uhrzeit konnte nicht abgerufen werden.",
+  "Verbindung konnte nicht geöffnet werden.",
+  "GitHub antwortete mit HTTP",
+  "Keine Antwort:",
+  "Ungültige Antwort.",
+  "Das Release enthält kein Firmware-Image.",
+  "Download fehlgeschlagen: HTTP",
+  "Unbekannte Dateigröße.",
+  "Nicht genug Speicher:",
+  "Download unterbrochen.",
+  "Schreiben in den Flash fehlgeschlagen:",
+  "Die heruntergeladene Datei ist beschädigt.",
 };
 // clang-format on
 
+const Language languages[] = {
+    {"en", "English"},
+    {"de", "Deutsch"},
+};
+const size_t languagesCount = sizeof(languages) / sizeof(languages[0]);
+
+static const char *const *table = defaultStrings;
 static String overrides[(int)StrId::Count];
 static bool hasOverride[(int)StrId::Count] = {false};
 
 void stringsInit() {
-  if (!LittleFS.begin(true)) return; // format-on-fail; no override file = English
+  // The language chosen in the settings (English if there is none or it is unknown).
+  table = settings.language == "de" ? germanStrings : defaultStrings;
+
+  if (!LittleFS.begin(true)) return; // format-on-fail; no override file = built-in text
 
   File file = LittleFS.open("/lang.json", "r");
   if (!file) return;
@@ -195,5 +347,5 @@ void stringsInit() {
 const char *T(StrId id) {
   int i = (int)id;
   if (i < 0 || i >= (int)StrId::Count) return "";
-  return hasOverride[i] ? overrides[i].c_str() : defaultStrings[i];
+  return hasOverride[i] ? overrides[i].c_str() : table[i];
 }

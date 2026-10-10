@@ -1,6 +1,7 @@
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 #include <lvgl.h>
+#include "fonts.h"
 #include <driver/i2c.h>
 #include "board_config.h"
 #include "display_setup.h"
@@ -150,6 +151,7 @@ void displaySetup() {
   dispDrv.flush_cb = lvglFlush;
   dispDrv.draw_buf = &drawBuf;
   lv_disp_drv_register(&dispDrv);
+  fontsInit();
 
   lv_indev_drv_init(&indevDrv);
   indevDrv.type = LV_INDEV_TYPE_POINTER;

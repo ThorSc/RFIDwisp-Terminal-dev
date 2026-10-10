@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Languages: English and German. A list with flags in Settings > General switches the language (the terminal
+  restarts to apply it); the choice is stored on the device. The error messages of the firmware update, the
+  Wi-Fi texts and the setup portal's labels are translated as well. The fonts are now rendered from a Montserrat
+  TrueType file in flash, so umlauts work.
 - QIDI box overview on the main screen, like the app's QIDI Data frame: the four slots of a box with state
   (empty / loaded / feeding), slot number, material, colour, spool number, Spoolman vendor and remaining weight.
   With more than one printer a drop-down chooses the printer, with more than one box a second one the box. The

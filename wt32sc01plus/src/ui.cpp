@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "display_setup.h"
+#include "fonts.h"
 
 #ifndef FIRMWARE_VERSION
 #define FIRMWARE_VERSION "dev"
@@ -21,6 +22,7 @@ void handleBoxPrinterSelected(int index);
 void handleBoxSelected(int box);
 void handleBoxRefreshRequested();
 void handleSettingsClosed();
+void handleLanguageSelected(const char *code);
 void handleWriteTagRequested();
 void handleUpdateButtonPressed();
 void handleInstallUpdateRequested();
@@ -975,15 +977,16 @@ void uiBoxShowSlots(int firstSlot, const BoxSlotView *slots) {
 
 static void buildMainScreen() {
   scrMain = lv_obj_create(nullptr);
+  fontsApply(scrMain);
 
   lv_obj_t *title = lv_label_create(scrMain);
   lv_label_set_text(title, T(StrId::AppTitle));
-  lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(title, fontLarge, 0);
   lv_obj_align(title, LV_ALIGN_TOP_LEFT, 10, 6);
 
   lv_obj_t *version = lv_label_create(scrMain);
   lv_label_set_text(version, "v" FIRMWARE_VERSION);
-  lv_obj_set_style_text_font(version, &lv_font_montserrat_14, 0);
+  lv_obj_set_style_text_font(version, fontSmall, 0);
   lv_obj_set_style_text_color(version, lv_color_hex(0x808080), 0);
   lv_obj_align_to(version, title, LV_ALIGN_OUT_RIGHT_BOTTOM, 6, -2);
 
@@ -1020,6 +1023,7 @@ static void buildMainScreen() {
 
 static void buildEditScreen() {
   scrEdit = lv_obj_create(nullptr);
+  fontsApply(scrEdit);
 
   // Two columns, four rows; every field has its label above it.
   //   1: Spool | Filament            (Spoolman mode only)
@@ -1126,6 +1130,127 @@ static void buildEditScreen() {
   uiSetSpoolmanMode(false);
 }
 
+// A small flag drawn from rectangles and lines (no image data), like the app's
+// language flags: Germany for "de", the United Kingdom for "en".
+static lv_obj_t *flagRect(lv_obj_t *parent, int x, int y, int w, int h, uint32_t rgb) {
+  lv_obj_t *rect = lv_obj_create(parent);
+  lv_obj_set_pos(rect, x, y);
+  lv_obj_set_size(rect, w, h);
+  lv_obj_set_style_bg_color(rect, lv_color_hex(rgb), 0);
+  lv_obj_set_style_bg_opa(rect, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(rect, 0, 0);
+  lv_obj_set_style_radius(rect, 0, 0);
+  lv_obj_set_style_pad_all(rect, 0, 0);
+  lv_obj_clear_flag(rect, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+  return rect;
+}
+
+static void flagLine(lv_obj_t *parent, const lv_point_t *points, int width, uint32_t rgb) {
+  lv_obj_t *line = lv_line_create(parent);
+  lv_line_set_points(line, points, 2);
+  lv_obj_set_style_line_width(line, width, 0);
+  lv_obj_set_style_line_color(line, lv_color_hex(rgb), 0);
+  lv_obj_set_pos(line, 0, 0);
+  lv_obj_clear_flag(line, LV_OBJ_FLAG_CLICKABLE);
+}
+
+static lv_obj_t *makeFlag(lv_obj_t *parent, const char *code) {
+  const int w = 24, h = 16;
+  lv_obj_t *flag = lv_obj_create(parent);
+  lv_obj_set_size(flag, w, h);
+  lv_obj_set_style_pad_all(flag, 0, 0);
+  lv_obj_set_style_radius(flag, 2, 0);
+  lv_obj_set_style_border_width(flag, 0, 0);
+  lv_obj_set_style_outline_width(flag, 1, 0); // keeps a light flag visible on a light background
+  lv_obj_set_style_outline_color(flag, lv_color_hex(0x808080), 0);
+  lv_obj_set_style_clip_corner(flag, true, 0);
+  lv_obj_clear_flag(flag, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+
+  if (strcmp(code, "de") == 0) {
+    flagRect(flag, 0, 0, w, 6, 0x000000);
+    flagRect(flag, 0, 5, w, 6, 0xDD0000);
+    flagRect(flag, 0, 10, w, 6, 0xFFCE00);
+  } else if (strcmp(code, "en") == 0) {
+    static const lv_point_t diagonalDown[] = {{0, 0}, {w, h}};
+    static const lv_point_t diagonalUp[] = {{w, 0}, {0, h}};
+    lv_obj_set_style_bg_color(flag, lv_color_hex(0x012169), 0);
+    lv_obj_set_style_bg_opa(flag, LV_OPA_COVER, 0);
+    flagLine(flag, diagonalDown, 4, 0xFFFFFF);
+    flagLine(flag, diagonalUp, 4, 0xFFFFFF);
+    flagLine(flag, diagonalDown, 2, 0xC8102E);
+    flagLine(flag, diagonalUp, 2, 0xC8102E);
+    flagRect(flag, 0, 5, w, 6, 0xFFFFFF);
+    flagRect(flag, 9, 0, 6, h, 0xFFFFFF);
+    flagRect(flag, 0, 6, w, 4, 0xC8102E);
+    flagRect(flag, 10, 0, 4, h, 0xC8102E);
+  }
+  return flag;
+}
+
+static const Language *currentLanguage() {
+  for (size_t i = 0; i < languagesCount; i++) {
+    if (settings.language == languages[i].code) return &languages[i];
+  }
+  return &languages[0];
+}
+
+// A flag next to a language's name, on a button or an entry of the list.
+static void fillLanguageButton(lv_obj_t *btn, const Language &language) {
+  lv_obj_t *flag = makeFlag(btn, language.code);
+  lv_obj_align(flag, LV_ALIGN_LEFT_MID, 4, 0);
+  lv_obj_t *label = lv_label_create(btn);
+  lv_label_set_text(label, language.name);
+  lv_obj_align(label, LV_ALIGN_LEFT_MID, 40, 0);
+}
+
+static lv_obj_t *languageOverlay;
+
+static void closeLanguageOverlay() {
+  if (!languageOverlay) return;
+  lv_obj_del_async(languageOverlay);
+  languageOverlay = nullptr;
+}
+
+static void languagePickedCb(lv_event_t *e) {
+  const Language *language = (const Language *)lv_event_get_user_data(e);
+  closeLanguageOverlay();
+  // The texts are built once, so a new language takes effect with a restart.
+  if (settings.language != language->code) handleLanguageSelected(language->code);
+}
+
+// The list of languages: a drop-down would show their names only, no flags.
+static void openLanguageOverlay(lv_event_t *e) {
+  if (languageOverlay) return;
+  languageOverlay = lv_obj_create(lv_layer_top());
+  lv_obj_set_size(languageOverlay, SCREEN_WIDTH, SCREEN_HEIGHT);
+  lv_obj_align(languageOverlay, LV_ALIGN_TOP_LEFT, 0, 0);
+  lv_obj_set_style_bg_color(languageOverlay, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_bg_opa(languageOverlay, LV_OPA_50, 0);
+  lv_obj_set_style_border_width(languageOverlay, 0, 0);
+  lv_obj_set_style_radius(languageOverlay, 0, 0);
+  lv_obj_clear_flag(languageOverlay, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_event_cb(
+      languageOverlay,
+      [](lv_event_t *ev) {
+        if (lv_event_get_target(ev) == lv_event_get_current_target(ev)) closeLanguageOverlay();
+      },
+      LV_EVENT_CLICKED, nullptr);
+
+  const int rowH = 46;
+  lv_obj_t *panel = lv_obj_create(languageOverlay);
+  lv_obj_set_size(panel, 260, languagesCount * rowH + 16);
+  lv_obj_center(panel);
+  lv_obj_set_style_pad_all(panel, 8, 0);
+  lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+  for (size_t i = 0; i < languagesCount; i++) {
+    lv_obj_t *btn = lv_btn_create(panel);
+    lv_obj_set_size(btn, 240, rowH - 6);
+    lv_obj_align(btn, LV_ALIGN_TOP_LEFT, 0, i * rowH);
+    lv_obj_add_event_cb(btn, languagePickedCb, LV_EVENT_CLICKED, (void *)&languages[i]);
+    fillLanguageButton(btn, languages[i]);
+  }
+}
+
 static lv_obj_t *makeSettingsField(lv_obj_t *parent, const char *placeholder, int y) {
   lv_obj_t *field = lv_textarea_create(parent);
   lv_textarea_set_one_line(field, true);
@@ -1139,6 +1264,7 @@ static lv_obj_t *makeSettingsField(lv_obj_t *parent, const char *placeholder, in
 
 static void buildSettingsScreen() {
   scrSettings = lv_obj_create(nullptr);
+  fontsApply(scrSettings);
 
   const int backH = 44;
   lv_obj_t *tabs = lv_tabview_create(scrSettings, LV_DIR_TOP, 36);
@@ -1179,10 +1305,20 @@ static void buildSettingsScreen() {
   lblUpdateStatus = lv_label_create(tabGeneral);
   lv_obj_set_width(lblUpdateStatus, SCREEN_WIDTH - 24);
   lv_label_set_long_mode(lblUpdateStatus, LV_LABEL_LONG_DOT);
-  lv_obj_set_style_text_font(lblUpdateStatus, &lv_font_montserrat_14, 0);
+  lv_obj_set_style_text_font(lblUpdateStatus, fontSmall, 0);
   lv_obj_set_style_text_color(lblUpdateStatus, lv_color_hex(0x808080), 0);
   lv_obj_align(lblUpdateStatus, LV_ALIGN_TOP_LEFT, 0, 100);
   lv_label_set_text(lblUpdateStatus, (String(T(StrId::Firmware)) + " v" + FIRMWARE_VERSION).c_str());
+
+  // Language: the current one on a button, the list opens on a tap
+  lv_obj_t *lblLanguage = lv_label_create(tabGeneral);
+  lv_label_set_text(lblLanguage, T(StrId::Language));
+  lv_obj_align(lblLanguage, LV_ALIGN_TOP_LEFT, 0, 142);
+  lv_obj_t *btnLanguage = lv_btn_create(tabGeneral);
+  lv_obj_set_size(btnLanguage, 200, 40);
+  lv_obj_align(btnLanguage, LV_ALIGN_TOP_RIGHT, 0, 130);
+  lv_obj_add_event_cb(btnLanguage, openLanguageOverlay, LV_EVENT_CLICKED, nullptr);
+  fillLanguageButton(btnLanguage, *currentLanguage());
 
   // WiFi: status, reconfigure
   lblWifiStatus = lv_label_create(tabWifi);
@@ -1227,7 +1363,7 @@ static void buildSettingsScreen() {
   lblPrinterError = lv_label_create(tabPrinter);
   lv_obj_set_width(lblPrinterError, SCREEN_WIDTH - 24);
   lv_label_set_long_mode(lblPrinterError, LV_LABEL_LONG_DOT);
-  lv_obj_set_style_text_font(lblPrinterError, &lv_font_montserrat_14, 0);
+  lv_obj_set_style_text_font(lblPrinterError, fontSmall, 0);
   lv_obj_set_style_text_color(lblPrinterError, lv_color_hex(0xD03030), 0);
   lv_obj_align(lblPrinterError, LV_ALIGN_TOP_LEFT, 0, 142);
   lv_label_set_text(lblPrinterError, "");

@@ -1,4 +1,5 @@
 #include "updater.h"
+#include "strings.h"
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <Update.h>
@@ -68,26 +69,26 @@ static bool beginGithub(HTTPClient &http, WiFiClientSecure &client, const String
 
 UpdateCheck updateCheck(UpdateInfo &info, String &error) {
   if (WiFi.status() != WL_CONNECTED) {
-    error = "Not connected to Wi-Fi.";
+    error = T(StrId::ErrWifiNotConnected);
     return UpdateCheck::Failed;
   }
   if (!syncClock()) {
-    error = "Could not get the time.";
+    error = T(StrId::ErrNoTime);
     return UpdateCheck::Failed;
   }
 
   WiFiClientSecure client;
   HTTPClient http;
   if (!beginGithub(http, client, kLatestReleaseUrl)) {
-    error = "Could not open connection.";
+    error = T(StrId::ErrOpenConnection);
     return UpdateCheck::Failed;
   }
   http.addHeader("Accept", "application/vnd.github+json");
 
   int status = http.GET();
   if (status != 200) {
-    error = status > 0 ? "GitHub returned HTTP " + String(status)
-                       : "No response: " + http.errorToString(status);
+    error = status > 0 ? String(T(StrId::ErrGithubHttp)) + " " + String(status)
+                       : String(T(StrId::ErrNoResponse)) + " " + http.errorToString(status);
     http.end();
     return UpdateCheck::Failed;
   }
@@ -107,13 +108,13 @@ UpdateCheck updateCheck(UpdateInfo &info, String &error) {
       deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
   http.end();
   if (parseError) {
-    error = "Malformed response.";
+    error = T(StrId::ErrMalformed);
     return UpdateCheck::Failed;
   }
 
   const char *tag = doc["tag_name"] | "";
   if (tag[0] == '\0') {
-    error = "Malformed response.";
+    error = T(StrId::ErrMalformed);
     return UpdateCheck::Failed;
   }
   const char *latest = (tag[0] == 'v' || tag[0] == 'V') ? tag + 1 : tag;
@@ -131,7 +132,7 @@ UpdateCheck updateCheck(UpdateInfo &info, String &error) {
     info.sha256.toLowerCase();
     return UpdateCheck::Available;
   }
-  error = "The release has no firmware image.";
+  error = T(StrId::ErrNoFirmwareImage);
   return UpdateCheck::Failed;
 }
 
@@ -147,32 +148,32 @@ static String hexOf(const uint8_t *bytes, size_t length) {
 
 bool updateInstall(const UpdateInfo &info, void (*progress)(int percent), String &error) {
   if (!syncClock()) {
-    error = "Could not get the time.";
+    error = T(StrId::ErrNoTime);
     return false;
   }
 
   WiFiClientSecure client;
   HTTPClient http;
   if (!beginGithub(http, client, info.url)) {
-    error = "Could not open connection.";
+    error = T(StrId::ErrOpenConnection);
     return false;
   }
   int status = http.GET();
   if (status != 200) {
-    error = status > 0 ? "Download failed: HTTP " + String(status)
-                       : "Download failed: " + http.errorToString(status);
+    error = status > 0 ? String(T(StrId::ErrDownloadHttp)) + " " + String(status)
+                       : String(T(StrId::ErrNoResponse)) + " " + http.errorToString(status);
     http.end();
     return false;
   }
 
   size_t total = info.size > 0 ? info.size : (http.getSize() > 0 ? http.getSize() : 0);
   if (total == 0) {
-    error = "Unknown file size.";
+    error = T(StrId::ErrUnknownSize);
     http.end();
     return false;
   }
   if (!Update.begin(total)) {
-    error = String("Not enough space: ") + Update.errorString();
+    error = String(T(StrId::ErrNoSpace)) + " " + Update.errorString();
     http.end();
     return false;
   }
@@ -192,7 +193,7 @@ bool updateInstall(const UpdateInfo &info, void (*progress)(int percent), String
     size_t available = stream->available();
     if (available == 0) {
       if (!http.connected() || millis() - lastData > kTimeoutMs) {
-        error = "Download interrupted.";
+        error = T(StrId::ErrDownloadInterrupted);
         ok = false;
         break;
       }
@@ -203,7 +204,7 @@ bool updateInstall(const UpdateInfo &info, void (*progress)(int percent), String
     if (count == 0) continue;
     lastData = millis();
     if (Update.write(buffer, count) != count) {
-      error = String("Flash write failed: ") + Update.errorString();
+      error = String(T(StrId::ErrFlashWrite)) + " " + Update.errorString();
       ok = false;
       break;
     }
@@ -225,7 +226,7 @@ bool updateInstall(const UpdateInfo &info, void (*progress)(int percent), String
   // Check before Update.end(): that call is what makes the new image the one
   // to boot.
   if (ok && info.sha256.length() > 0 && hexOf(digest, sizeof(digest)) != info.sha256) {
-    error = "The downloaded file is damaged.";
+    error = T(StrId::ErrDamaged);
     ok = false;
   }
   if (!ok) {
@@ -233,7 +234,7 @@ bool updateInstall(const UpdateInfo &info, void (*progress)(int percent), String
     return false;
   }
   if (!Update.end()) {
-    error = String("Update failed: ") + Update.errorString();
+    error = Update.errorString();
     return false;
   }
 

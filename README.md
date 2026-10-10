@@ -136,12 +136,18 @@ self-updating version has to be flashed that way too.
 
 All UI text goes through `T(StrId::...)` (see `src/strings.h`), never a
 literal string, specifically so a language can be swapped without touching
-UI code. English is built into the firmware (`src/strings.cpp`). To use a
-different language, or to shrink the string table if flash is tight:
+UI code. English and German are built into the firmware (`src/strings.cpp`);
+the language is chosen in Settings > General (a list with flags, applied by a
+restart) and stored on the device. The texts are drawn with Montserrat from a
+TrueType file in flash (`src/fonts/`), because LVGL's built-in fonts have no
+umlauts. To change single texts, to try another language or to shrink the
+string table if flash is tight, an override file replaces the built-in text of
+whichever language is chosen:
 
 1. Copy `data/lang.example.json` to `data/lang.json` and translate the
    values (keep the keys unchanged; an entry can be omitted to keep the
-   English default for that string).
+   built-in text for that string). Characters outside Latin-1 (e.g. Cyrillic)
+   are not in the font yet.
 2. `pio run -t uploadfs` to write it to the device's LittleFS partition.
 
 No firmware rebuild needed to change or remove the override afterwards.

@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include "strings.h"
 
 static const uint32_t kTimeoutMs = 5000;
 
@@ -13,7 +14,7 @@ static SpoolmanResult httpJson(const String &method, const String &url,
   HTTPClient http;
   http.setTimeout(kTimeoutMs);
   if (!http.begin(url)) {
-    result.error = "Could not open connection.";
+    result.error = T(StrId::ErrOpenConnection);
     return result;
   }
   http.setConnectTimeout(kTimeoutMs);
@@ -24,7 +25,7 @@ static SpoolmanResult httpJson(const String &method, const String &url,
                 url.c_str(), status, (int)WiFi.status(), WiFi.localIP().toString().c_str(),
                 WiFi.gatewayIP().toString().c_str(), WiFi.RSSI());
   if (status <= 0) {
-    result.error = "No response: " + http.errorToString(status);
+    result.error = String(T(StrId::ErrNoResponse)) + " " + http.errorToString(status);
     http.end();
     return result;
   }
