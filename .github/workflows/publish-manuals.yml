@@ -1,0 +1,66 @@
+name: Publish manuals
+
+# Puts the PDF files of the user manuals (docs/UserManual_Terminal_*.pdf, exported from
+# the Word documents by hand) into the folder docs/ of the public distribution
+# repo ThorSc/RFIDwisp-Terminal. That needs no release and does not change the version:
+# commit new PDFs to master (they are published when they changed), or start the
+# workflow by hand. A file that is identical to the published one is skipped.
+#
+# The token is the same as in release.yml (RELEASES_REPO_TOKEN, classic PAT with
+# "public_repo"). The contents API takes the file in the request body, so the
+# JSON goes through a file: a PDF of a few MB is far too big for a command line.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "docs/UserManual_Terminal_*.pdf"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-manuals
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Publish the PDF files to the distribution repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(docs/UserManual_Terminal_*.pdf)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No docs/UserManual_Terminal_*.pdf found - export the Word manuals as PDF and commit them first."
+            exit 1
+          fi
+
+          for file in "${files[@]}"; do
+            name=$(basename "$file")
+            dest="docs/$name"
+            local_sha=$(git hash-object "$file")
+            remote_sha=$(gh api "repos/ThorSc/RFIDwisp-Terminal/contents/$dest" --jq '.sha' 2>/dev/null || true)
+            if [ "$local_sha" = "$remote_sha" ]; then
+              echo "$name is already published - skipped"
+              continue
+            fi
+            python3 - "$file" "$remote_sha" "Sync $dest from RFIDwisp-Terminal-dev (${GITHUB_SHA::7})" > "$RUNNER_TEMP/payload.json" <<'PY'
+          import base64, json, sys
+          path, sha, message = sys.argv[1:4]
+          body = {"message": message, "content": base64.b64encode(open(path, "rb").read()).decode()}
+          if sha:
+              body["sha"] = sha
+          print(json.dumps(body))
+          PY
+            gh api -X PUT "repos/ThorSc/RFIDwisp-Terminal/contents/$dest" --input "$RUNNER_TEMP/payload.json" --silent
+            echo "$name published"
+          done

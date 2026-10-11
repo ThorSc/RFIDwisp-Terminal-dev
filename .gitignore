@@ -3,3 +3,8 @@
 *.o
 *.elf
 *.bin
+
+# Word sources of the manuals stay private; only the PDFs are published
+docs/*.docx
+docs/templates/
+docs/~$*
