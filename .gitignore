@@ -8,3 +8,6 @@
 docs/*.docx
 docs/templates/
 docs/~$*
+
+# Tools for the manuals (screenshots, generator) are kept private
+tools/

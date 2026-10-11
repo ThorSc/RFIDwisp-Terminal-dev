@@ -826,7 +826,7 @@ static void buildBoxOverview() {
   lv_obj_add_flag(ddMainPrinter, LV_OBJ_FLAG_HIDDEN);
 
   lblMainPrinter = lv_label_create(scrMain);
-  lv_obj_set_width(lblMainPrinter, 290);
+  lv_obj_set_width(lblMainPrinter, 200);
   lv_label_set_long_mode(lblMainPrinter, LV_LABEL_LONG_DOT);
   lv_obj_align(lblMainPrinter, LV_ALIGN_TOP_LEFT, 10, 50);
   lv_label_set_text(lblMainPrinter, "");
@@ -927,6 +927,10 @@ void uiBoxShowPrinters(const std::vector<String> &names, int selected, const cha
 }
 
 void uiBoxShowBoxes(int count, int selected) {
+  // The note next to the drop-downs gets the room of the box drop-down when
+  // there is none.
+  lv_obj_set_x(lblBoxState, count > 1 ? 304 : 214);
+  lv_obj_set_width(lblBoxState, count > 1 ? 120 : 210);
   if (count > 1) {
     String options;
     for (int i = 1; i <= count; i++) {
@@ -943,6 +947,8 @@ void uiBoxShowBoxes(int count, int selected) {
 
 void uiBoxShowState(const char *text, bool error) {
   lv_label_set_text(lblBoxState, text);
+  // The printer's name and address take the room of the note when there is none.
+  lv_obj_set_width(lblMainPrinter, text[0] ? 200 : 290);
   lv_obj_set_style_text_color(lblBoxState, error ? lv_color_hex(0xE53935) : lv_color_hex(0x808080), 0);
 }
 
