@@ -61,8 +61,9 @@ static lv_obj_t *btnSpool, *spoolSwatch, *spoolBtnLabel;          // Spoolman mo
 static lv_obj_t *btnFilament, *filamentSwatch, *filamentBtnLabel; // ditto for ddFilament
 static lv_obj_t *pickerOverlay;
 static bool pickerForSpool;
-// Filament picker: only the filaments whose vendor starts with this letter
-// ('A'-'Z', '#' for anything else) are listed; 0 = all. Kept between openings.
+// Filament picker: only the filaments whose vendor starts with this character
+// ('A'-'Z', '0'-'9', '#' for anything else) are listed; 0 = all. Kept between
+// openings.
 static char pickerLetter = 0;
 static lv_obj_t *pickerList, *pickerLetterLabel, *letterOverlay;
 static int pickerRowWidth;
@@ -411,7 +412,7 @@ static lv_obj_t *makeSwatchButton(lv_obj_t *parent, int width, int height, int t
 
 static char filamentLetter(const SpoolmanFilament &filament) {
   char c = filament.vendorName.length() ? (char)toupper((unsigned char)filament.vendorName[0]) : '#';
-  return c >= 'A' && c <= 'Z' ? c : '#';
+  return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ? c : '#';
 }
 
 // Fills the picker's list; the entries keep their index in the full list.
@@ -442,29 +443,33 @@ static void closeLetterOverlay() {
   }
 }
 
+static const uint32_t kLetterAllId = 37; // after 10 digits, 26 letters and "#"
+
 static void letterPickedCb(lv_event_t *e) {
   lv_obj_t *matrix = lv_event_get_target(e);
   uint32_t id = lv_btnmatrix_get_selected_btn(matrix);
   if (id == LV_BTNMATRIX_BTN_NONE) return;
   const char *text = lv_btnmatrix_get_btn_text(matrix, id);
-  pickerLetter = id == 27 ? 0 : text[0]; // 27 = "All"
+  pickerLetter = id == kLetterAllId ? 0 : text[0];
   closeLetterOverlay();
   if (!pickerList) return;
   lv_label_set_text(pickerLetterLabel, pickerLetter ? String(pickerLetter).c_str() : "A-Z");
   fillPicker();
 }
 
-// A keyboard with the letters A-Z (and # for the other vendors); letters no
-// vendor starts with are greyed out.
+// A keyboard with the digits, the letters A-Z and # (the other vendors); keys
+// no vendor starts with are greyed out.
 static void openLetterKeyboard(lv_event_t *e) {
   if (letterOverlay) return;
   static char allLabel[16];
   strncpy(allLabel, T(StrId::FilterAll), sizeof(allLabel) - 1);
-  static const char *map[] = {"A", "B", "C", "D", "E", "F", "G", "\n", "H", "I", "J", "K", "L", "M", "N", "\n",
-                              "O", "P", "Q", "R", "S", "T", "U", "\n", "V", "W", "X", "Y", "Z", "#", allLabel, ""};
+  static const char *map[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "\n",
+                              "A", "B", "C", "D", "E", "F", "G", "H", "I", "\n",
+                              "J", "K", "L", "M", "N", "O", "P", "Q", "R", "\n",
+                              "S", "T", "U", "V", "W", "X", "Y", "Z", "#", "\n", allLabel, ""};
 
   letterOverlay = lv_obj_create(lv_layer_top());
-  lv_obj_set_size(letterOverlay, SCREEN_WIDTH - 40, SCREEN_HEIGHT - 60);
+  lv_obj_set_size(letterOverlay, SCREEN_WIDTH - 40, SCREEN_HEIGHT - 40);
   lv_obj_align(letterOverlay, LV_ALIGN_CENTER, 0, 0);
   lv_obj_set_style_bg_color(letterOverlay, lv_color_hex(0x303030), 0);
   lv_obj_set_style_pad_all(letterOverlay, 6, 0);
@@ -472,17 +477,15 @@ static void openLetterKeyboard(lv_event_t *e) {
 
   lv_obj_t *matrix = lv_btnmatrix_create(letterOverlay);
   lv_btnmatrix_set_map(matrix, map);
-  lv_obj_set_size(matrix, SCREEN_WIDTH - 52, SCREEN_HEIGHT - 72);
+  lv_obj_set_size(matrix, SCREEN_WIDTH - 52, SCREEN_HEIGHT - 52);
   lv_obj_align(matrix, LV_ALIGN_CENTER, 0, 0);
 
-  bool used[28] = {};
-  used[27] = true;
-  for (const SpoolmanFilament &filament : uiFilaments) {
-    char c = filamentLetter(filament);
-    used[c == '#' ? 26 : c - 'A'] = true;
-  }
-  for (int i = 0; i < 28; i++) {
-    if (!used[i]) lv_btnmatrix_set_btn_ctrl(matrix, i, LV_BTNMATRIX_CTRL_DISABLED);
+  bool used[256] = {};
+  for (const SpoolmanFilament &filament : uiFilaments) used[(unsigned char)filamentLetter(filament)] = true;
+  for (uint32_t id = 0; id < kLetterAllId; id++) {
+    if (!used[(unsigned char)lv_btnmatrix_get_btn_text(matrix, id)[0]]) {
+      lv_btnmatrix_set_btn_ctrl(matrix, id, LV_BTNMATRIX_CTRL_DISABLED);
+    }
   }
   lv_obj_add_event_cb(matrix, letterPickedCb, LV_EVENT_VALUE_CHANGED, nullptr);
 }
