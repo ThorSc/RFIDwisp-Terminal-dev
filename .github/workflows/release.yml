@@ -201,6 +201,20 @@ jobs:
           name: release-zip
           path: release_assets
 
+      - name: Release notes from CHANGELOG.md
+        # The text of the section "## [x.y.z]" of this version becomes the
+        # description of the release.
+        run: |
+          set -euo pipefail
+          version="${{ needs.prepare.outputs.tag }}"
+          version="${version#v}"
+          tr -d '\r' < CHANGELOG.md \
+            | awk -v v="$version" '/^## \[/{p=(index($0,"## [" v "]")==1); next} p' \
+            | sed '/./,$!d' > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "::warning::No section [$version] in CHANGELOG.md - the release has no description."
+          fi
+
       - name: Publish release to distribution repo
         uses: softprops/action-gh-release@v2
         with:
@@ -208,6 +222,7 @@ jobs:
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: ${{ needs.prepare.outputs.tag }}
+          body_path: release_notes.md
           files: release_assets/*
 
       - name: Sync LICENSE files and changelog to distribution repo root

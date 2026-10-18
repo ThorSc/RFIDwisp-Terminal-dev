@@ -10,18 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.8.0] - 2026-10-18
 
+### Added
+
+- Tag screen, Spoolman filament picker: the list shows the filament name after the material. An "A-Z" button
+  on the left opens a keyboard of digits and letters; the list then shows only the filaments whose vendor
+  starts with that character ("#" for all other characters, "All" shows every one). The character is kept
+  when the list is opened again.
+- A spinner is shown while the filament and spool lists build (the first opening takes a while).
+- Once a filament is chosen, the top entry of the list reads "(no template)" and drops the choice again.
+
 ### Changed
 
-- Tag screen, Spoolman filament picker: the list shows the filament name after the material, and an "A-Z"
-  button on the left opens a keyboard of digits and letters; the list then shows only the filaments whose vendor starts
-  with that character ("#" for other characters, "All" shows every one). The filaments are sorted without regard to upper and lower case (eSun under E). The list builds much faster, and the filaments are fetched with
-  only the fields that are used.
-  While the list builds (the first opening takes a while) a spinner is shown.
-  A text that is too long for its line now ends in "..." instead of wrapping onto a second line (the pickers and their buttons).
-  The hint entry "(pick to prefill)" at the top of the filament list is greyed out and cannot be chosen; once a filament is chosen it reads "(no template)" and drops the choice again.
 - Main screen: if the printer cannot be reached (or has no QIDI box data), the red note was cut off after the
   first word ("nicht..."). The note and the full message now take the place of the empty slot rows, in red
   and wrapped; the status line no longer carries it.
+- The hint entry "(pick to prefill)" at the top of the filament list is greyed out and cannot be chosen.
+- The filaments are sorted without regard to upper and lower case (eSun under E).
+- A text that is too long for its line now ends in "..." instead of wrapping onto a second line (the pickers
+  and their buttons).
+- The filaments are fetched from Spoolman with only the fields that are used, which is quicker.
 
 ## [0.7.0] - 2026-10-11
 
