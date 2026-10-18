@@ -9,3 +9,7 @@ What do you need to build the RFID wisp terminal?
 1. 1 x R680 Ohm resistor
 1. Wires AWG24 for connection between WT32 and RC522
 1. Wires AWG18 or 0.75mm² for power lines
+
+Optional for using a LiPo battery:
+1. LiPo 1100 mA
+1. MH-CD42 2A 5V Charge Discharge Module
