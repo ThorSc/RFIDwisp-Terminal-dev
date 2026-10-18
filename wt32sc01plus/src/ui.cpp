@@ -61,6 +61,11 @@ static lv_obj_t *btnSpool, *spoolSwatch, *spoolBtnLabel;          // Spoolman mo
 static lv_obj_t *btnFilament, *filamentSwatch, *filamentBtnLabel; // ditto for ddFilament
 static lv_obj_t *pickerOverlay;
 static bool pickerForSpool;
+// Filament picker: only the filaments whose vendor starts with this letter
+// ('A'-'Z', '#' for anything else) are listed; 0 = all. Kept between openings.
+static char pickerLetter = 0;
+static lv_obj_t *pickerList, *pickerLetterLabel, *letterOverlay;
+static int pickerRowWidth;
 
 static bool spoolmanModeActive = false;
 static std::vector<SpoolmanVendor> uiVendors;
@@ -354,7 +359,13 @@ static void updateFilamentButton() {
 }
 
 static void closePicker() {
+  if (letterOverlay) {
+    lv_obj_del_async(letterOverlay);
+    letterOverlay = nullptr;
+  }
   if (pickerOverlay) {
+    pickerList = nullptr;
+    pickerLetterLabel = nullptr;
     lv_obj_del_async(pickerOverlay);
     pickerOverlay = nullptr;
   }
@@ -398,7 +409,86 @@ static lv_obj_t *makeSwatchButton(lv_obj_t *parent, int width, int height, int t
   return btn;
 }
 
-// Full-screen scrollable list where every entry shows its colour.
+static char filamentLetter(const SpoolmanFilament &filament) {
+  char c = filament.vendorName.length() ? (char)toupper((unsigned char)filament.vendorName[0]) : '#';
+  return c >= 'A' && c <= 'Z' ? c : '#';
+}
+
+// Fills the picker's list; the entries keep their index in the full list.
+// Building the rows is what takes the time, so a filter makes it much quicker.
+static void fillPicker() {
+  lv_obj_clean(pickerList);
+  size_t count = 1 + (pickerForSpool ? uiSpools.size() : uiFilaments.size());
+  for (size_t i = 0; i < count; i++) {
+    if (!pickerForSpool && i > 0 && pickerLetter && filamentLetter(uiFilaments[i - 1]) != pickerLetter) continue;
+    String text;
+    bool hasColor;
+    uint32_t rgb = 0;
+    pickerEntry(pickerForSpool, i, text, hasColor, rgb);
+
+    lv_obj_t *swatch, *label;
+    lv_obj_t *row = makeSwatchButton(pickerList, pickerRowWidth, 40, pickerRowWidth - 56, &swatch, &label);
+    lv_label_set_text(label, text.c_str());
+    paintSwatch(swatch, hasColor, rgb);
+    lv_obj_add_event_cb(row, pickerItemCb, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
+  }
+  lv_obj_scroll_to_y(pickerList, 0, LV_ANIM_OFF);
+}
+
+static void closeLetterOverlay() {
+  if (letterOverlay) {
+    lv_obj_del_async(letterOverlay);
+    letterOverlay = nullptr;
+  }
+}
+
+static void letterPickedCb(lv_event_t *e) {
+  lv_obj_t *matrix = lv_event_get_target(e);
+  uint32_t id = lv_btnmatrix_get_selected_btn(matrix);
+  if (id == LV_BTNMATRIX_BTN_NONE) return;
+  const char *text = lv_btnmatrix_get_btn_text(matrix, id);
+  pickerLetter = id == 27 ? 0 : text[0]; // 27 = "All"
+  closeLetterOverlay();
+  if (!pickerList) return;
+  lv_label_set_text(pickerLetterLabel, pickerLetter ? String(pickerLetter).c_str() : "A-Z");
+  fillPicker();
+}
+
+// A keyboard with the letters A-Z (and # for the other vendors); letters no
+// vendor starts with are greyed out.
+static void openLetterKeyboard(lv_event_t *e) {
+  if (letterOverlay) return;
+  static char allLabel[16];
+  strncpy(allLabel, T(StrId::FilterAll), sizeof(allLabel) - 1);
+  static const char *map[] = {"A", "B", "C", "D", "E", "F", "G", "\n", "H", "I", "J", "K", "L", "M", "N", "\n",
+                              "O", "P", "Q", "R", "S", "T", "U", "\n", "V", "W", "X", "Y", "Z", "#", allLabel, ""};
+
+  letterOverlay = lv_obj_create(lv_layer_top());
+  lv_obj_set_size(letterOverlay, SCREEN_WIDTH - 40, SCREEN_HEIGHT - 60);
+  lv_obj_align(letterOverlay, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_style_bg_color(letterOverlay, lv_color_hex(0x303030), 0);
+  lv_obj_set_style_pad_all(letterOverlay, 6, 0);
+  lv_obj_clear_flag(letterOverlay, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_t *matrix = lv_btnmatrix_create(letterOverlay);
+  lv_btnmatrix_set_map(matrix, map);
+  lv_obj_set_size(matrix, SCREEN_WIDTH - 52, SCREEN_HEIGHT - 72);
+  lv_obj_align(matrix, LV_ALIGN_CENTER, 0, 0);
+
+  bool used[28] = {};
+  used[27] = true;
+  for (const SpoolmanFilament &filament : uiFilaments) {
+    char c = filamentLetter(filament);
+    used[c == '#' ? 26 : c - 'A'] = true;
+  }
+  for (int i = 0; i < 28; i++) {
+    if (!used[i]) lv_btnmatrix_set_btn_ctrl(matrix, i, LV_BTNMATRIX_CTRL_DISABLED);
+  }
+  lv_obj_add_event_cb(matrix, letterPickedCb, LV_EVENT_VALUE_CHANGED, nullptr);
+}
+
+// Full-screen scrollable list where every entry shows its colour. The
+// filament list has an "A-Z" button on the left that filters it by letter.
 static void openPicker(bool forSpool) {
   if (pickerOverlay) return;
   pickerForSpool = forSpool;
@@ -419,26 +509,27 @@ static void openPicker(bool forSpool) {
       },
       LV_EVENT_CLICKED, nullptr);
 
-  lv_obj_t *list = lv_obj_create(pickerOverlay);
-  lv_obj_set_size(list, SCREEN_WIDTH - 20, SCREEN_HEIGHT - 20);
-  lv_obj_align(list, LV_ALIGN_CENTER, 0, 0);
-  lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_style_pad_all(list, 4, 0);
-  lv_obj_set_style_pad_row(list, 4, 0);
-
-  size_t count = 1 + (forSpool ? uiSpools.size() : uiFilaments.size());
-  for (size_t i = 0; i < count; i++) {
-    String text;
-    bool hasColor;
-    uint32_t rgb = 0;
-    pickerEntry(forSpool, i, text, hasColor, rgb);
-
-    lv_obj_t *swatch, *label;
-    lv_obj_t *row = makeSwatchButton(list, SCREEN_WIDTH - 44, 40, SCREEN_WIDTH - 100, &swatch, &label);
-    lv_label_set_text(label, text.c_str());
-    paintSwatch(swatch, hasColor, rgb);
-    lv_obj_add_event_cb(row, pickerItemCb, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
+  int listX = 10, listWidth = SCREEN_WIDTH - 20;
+  if (!forSpool) {
+    listX = 74;
+    listWidth = SCREEN_WIDTH - 84;
+    lv_obj_t *btnLetter = lv_btn_create(pickerOverlay);
+    lv_obj_set_size(btnLetter, 56, 56);
+    lv_obj_align(btnLetter, LV_ALIGN_TOP_LEFT, 10, 10);
+    lv_obj_add_event_cb(btnLetter, openLetterKeyboard, LV_EVENT_CLICKED, nullptr);
+    pickerLetterLabel = lv_label_create(btnLetter);
+    lv_label_set_text(pickerLetterLabel, pickerLetter ? String(pickerLetter).c_str() : "A-Z");
+    lv_obj_center(pickerLetterLabel);
   }
+
+  pickerList = lv_obj_create(pickerOverlay);
+  lv_obj_set_size(pickerList, listWidth, SCREEN_HEIGHT - 20);
+  lv_obj_align(pickerList, LV_ALIGN_TOP_LEFT, listX, 10);
+  lv_obj_set_flex_flow(pickerList, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_all(pickerList, 4, 0);
+  lv_obj_set_style_pad_row(pickerList, 4, 0);
+  pickerRowWidth = listWidth - 24;
+  fillPicker();
 }
 
 // A chosen filament fixes material, colour and vendor of the new spool, so

@@ -51,6 +51,7 @@ enum class StrId {
   SpoolmanLoadFailed,
   Filament,
   NoFilament,
+  FilterAll,
   ErrorWeightRange,
   ErrorSpoolNumberRange,
   ErrorVendorIdRange,
