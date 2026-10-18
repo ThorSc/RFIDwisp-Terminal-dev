@@ -325,6 +325,7 @@ static void pickerEntry(bool forSpool, size_t index, String &text, bool &hasColo
     if (index - 1 >= uiFilaments.size()) return;
     const SpoolmanFilament &filament = uiFilaments[index - 1];
     text = filament.vendorName + " " + filament.material;
+    if (filament.name.length()) text += " " + filament.name;
     hasColor = parseColorHex(filament.colorHex, rgb);
   }
 }
@@ -1561,6 +1562,7 @@ void uiSetSpoolmanLists(const std::vector<SpoolmanVendor> &vendors,
   String filamentOptions = T(StrId::NoFilament);
   for (const SpoolmanFilament &filament : uiFilaments) {
     filamentOptions += "\n" + filament.vendorName + " " + filament.material;
+    if (filament.name.length()) filamentOptions += " " + filament.name;
     if (filament.colorHex.length()) filamentOptions += " " + filament.colorHex;
   }
   lv_dropdown_set_options(ddFilament, filamentOptions.c_str());

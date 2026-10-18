@@ -17,6 +17,7 @@ struct SpoolmanFilament {
   int id = 0;
   int vendorId = 0;
   String vendorName;
+  String name;      // e.g. "Galaxy Black"; may be empty
   String material;  // free-form, e.g. "PLA", "PETG Basic"
   String colorHex;   // "#RRGGBB", may be empty
 };

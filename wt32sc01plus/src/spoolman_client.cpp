@@ -85,13 +85,25 @@ SpoolmanResult spoolmanGetVendors(const String &address, std::vector<SpoolmanVen
 
 SpoolmanResult spoolmanGetFilaments(const String &address, std::vector<SpoolmanFilament> &out) {
   out.clear();
+  // Only the fields shown and used are kept; the rest (extra, external ids,
+  // temperatures...) would only slow the download and fill the memory.
+  JsonDocument filter;
+  JsonObject filterItem = filter.add<JsonObject>();
+  filterItem["id"] = true;
+  filterItem["name"] = true;
+  filterItem["material"] = true;
+  filterItem["color_hex"] = true;
+  filterItem["vendor"]["id"] = true;
+  filterItem["vendor"]["name"] = true;
+
   JsonDocument doc;
-  SpoolmanResult result = httpJson("GET", address + "/api/v1/filament", "", doc);
+  SpoolmanResult result = httpJson("GET", address + "/api/v1/filament", "", doc, &filter);
   if (!result.ok) return result;
 
   for (JsonVariantConst item : doc.as<JsonArrayConst>()) {
     SpoolmanFilament filament;
     filament.id = item["id"] | 0;
+    filament.name = (const char *)(item["name"] | "");
     filament.material = (const char *)(item["material"] | "");
     filament.colorHex = (const char *)(item["color_hex"] | "");
     filament.vendorId = item["vendor"]["id"] | 0;
