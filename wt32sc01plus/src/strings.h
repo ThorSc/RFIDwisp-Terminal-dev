@@ -52,6 +52,7 @@ enum class StrId {
   Filament,
   NoFilament,
   FilterAll,
+  NoTemplate,
   ErrorWeightRange,
   ErrorSpoolNumberRange,
   ErrorVendorIdRange,

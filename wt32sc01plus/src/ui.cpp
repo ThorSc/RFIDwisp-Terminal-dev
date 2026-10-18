@@ -442,13 +442,16 @@ static void fillPickerStep(lv_timer_t *timer) {
     bool hasColor;
     uint32_t rgb = 0;
     pickerEntry(pickerForSpool, i, text, hasColor, rgb);
+    if (!pickerForSpool && i == 0 && lv_dropdown_get_selected(ddFilament) > 0) text = T(StrId::NoTemplate);
 
     lv_obj_t *swatch, *label;
     lv_obj_t *row = makeSwatchButton(pickerList, pickerRowWidth, 40, pickerRowWidth - 56, &swatch, &label);
     lv_label_set_text(label, text.c_str());
     paintSwatch(swatch, hasColor, rgb);
-    if (!pickerForSpool && i == 0) {
-      lv_obj_add_state(row, LV_STATE_DISABLED); // only a hint, there is nothing behind it
+    // Entry 0 of the filament list is a hint with nothing behind it; once a
+    // filament is chosen it becomes the way to drop the choice again.
+    if (!pickerForSpool && i == 0 && lv_dropdown_get_selected(ddFilament) == 0) {
+      lv_obj_add_state(row, LV_STATE_DISABLED);
     } else {
       lv_obj_add_event_cb(row, pickerItemCb, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
     }
