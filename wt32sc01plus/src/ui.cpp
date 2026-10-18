@@ -425,6 +425,16 @@ static lv_obj_t *makeSwatchButton(lv_obj_t *parent, int width, int height, int t
   return btn;
 }
 
+// Orders two texts without regard to upper and lower case (ASCII letters).
+static int compareIgnoreCase(const String &a, const String &b) {
+  const char *x = a.c_str(), *y = b.c_str();
+  for (; *x && *y; x++, y++) {
+    int cx = tolower((unsigned char)*x), cy = tolower((unsigned char)*y);
+    if (cx != cy) return cx < cy ? -1 : 1;
+  }
+  return *x ? 1 : (*y ? -1 : 0);
+}
+
 static char filamentLetter(const SpoolmanFilament &filament) {
   char c = filament.vendorName.length() ? (char)toupper((unsigned char)filament.vendorName[0]) : '#';
   return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ? c : '#';
@@ -1671,13 +1681,15 @@ void uiSetSpoolmanLists(const std::vector<SpoolmanVendor> &vendors,
   // doesn't affect anything but display order.
   std::sort(uiSpools.begin(), uiSpools.end(),
             [](const SpoolmanSpool &a, const SpoolmanSpool &b) { return a.id > b.id; });
-  // Vendor, then material, then colour - same order as the Flutter app's
-  // filament dropdown.
+  // Vendor, then material, then name, then colour; upper and lower case do not
+  // count, so "eSun" is listed under E, where the A-Z filter looks for it.
   std::sort(uiFilaments.begin(), uiFilaments.end(),
             [](const SpoolmanFilament &a, const SpoolmanFilament &b) {
-              if (a.vendorName != b.vendorName) return a.vendorName < b.vendorName;
-              if (a.material != b.material) return a.material < b.material;
-              return a.colorHex < b.colorHex;
+              int c = compareIgnoreCase(a.vendorName, b.vendorName);
+              if (c == 0) c = compareIgnoreCase(a.material, b.material);
+              if (c == 0) c = compareIgnoreCase(a.name, b.name);
+              if (c == 0) c = compareIgnoreCase(a.colorHex, b.colorHex);
+              return c < 0;
             });
 
   String vendorOptions;

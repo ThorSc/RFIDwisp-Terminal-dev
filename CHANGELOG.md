@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Tag screen, Spoolman filament picker: the list shows the filament name after the material, and an "A-Z"
   button on the left opens a keyboard of digits and letters; the list then shows only the filaments whose vendor starts
-  with that character ("#" for other characters, "All" shows every one). The list builds much faster, and the filaments are fetched with
+  with that character ("#" for other characters, "All" shows every one). The filaments are sorted without regard to upper and lower case (eSun under E). The list builds much faster, and the filaments are fetched with
   only the fields that are used.
   While the list builds (the first opening takes a while) a spinner is shown.
   A text that is too long for its line now ends in "..." instead of wrapping onto a second line (the pickers and their buttons).
