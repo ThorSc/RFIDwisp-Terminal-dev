@@ -417,6 +417,7 @@ static lv_obj_t *makeSwatchButton(lv_obj_t *parent, int width, int height, int t
   lv_obj_t *label = lv_label_create(btn);
   lv_obj_set_width(label, textWidth);
   lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+  lv_obj_set_height(label, lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN))); // one line: a longer text ends in "..." instead of wrapping
   lv_obj_align(label, LV_ALIGN_LEFT_MID, 32, 0);
 
   *swatchOut = swatch;

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   with that character ("#" for other characters, "All" shows every one). The list builds much faster, and the filaments are fetched with
   only the fields that are used.
   While the list builds (the first opening takes a while) a spinner is shown.
+  A text that is too long for its line now ends in "..." instead of wrapping onto a second line (the pickers and their buttons).
   The hint entry "(pick to prefill)" at the top of the filament list is greyed out and cannot be chosen; once a filament is chosen it reads "(no template)" and drops the choice again.
 - Main screen: if the printer cannot be reached (or has no QIDI box data), the red note was cut off after the
   first word ("nicht..."). The note and the full message now take the place of the empty slot rows, in red
