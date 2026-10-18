@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-18
+
 ### Changed
 
 - Tag screen, Spoolman filament picker: the list shows the filament name after the material, and an "A-Z"
