@@ -67,6 +67,11 @@ static bool pickerForSpool;
 static char pickerLetter = 0;
 static lv_obj_t *pickerList, *pickerLetterLabel, *letterOverlay;
 static int pickerRowWidth;
+// The rows are built a few at a time from a timer so that the spinner keeps
+// turning while a long list appears.
+static lv_obj_t *pickerSpinner;
+static lv_timer_t *pickerFillTimer;
+static size_t pickerFillNext;
 
 static bool spoolmanModeActive = false;
 static std::vector<SpoolmanVendor> uiVendors;
@@ -359,7 +364,16 @@ static void updateFilamentButton() {
   paintSwatch(filamentSwatch, hasColor, rgb);
 }
 
+static void stopPickerFill() {
+  if (pickerFillTimer) {
+    lv_timer_del(pickerFillTimer);
+    pickerFillTimer = nullptr;
+  }
+}
+
 static void closePicker() {
+  stopPickerFill();
+  pickerSpinner = nullptr;
   if (letterOverlay) {
     lv_obj_del_async(letterOverlay);
     letterOverlay = nullptr;
@@ -415,12 +429,14 @@ static char filamentLetter(const SpoolmanFilament &filament) {
   return (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ? c : '#';
 }
 
-// Fills the picker's list; the entries keep their index in the full list.
-// Building the rows is what takes the time, so a filter makes it much quicker.
-static void fillPicker() {
-  lv_obj_clean(pickerList);
+// Builds the next few rows of the picker's list; the entries keep their index
+// in the full list. Building the rows is what takes the time.
+static void fillPickerStep(lv_timer_t *timer) {
+  const int kRowsPerStep = 6;
   size_t count = 1 + (pickerForSpool ? uiSpools.size() : uiFilaments.size());
-  for (size_t i = 0; i < count; i++) {
+  int built = 0;
+  while (pickerFillNext < count && built < kRowsPerStep) {
+    size_t i = pickerFillNext++;
     if (!pickerForSpool && i > 0 && pickerLetter && filamentLetter(uiFilaments[i - 1]) != pickerLetter) continue;
     String text;
     bool hasColor;
@@ -432,8 +448,23 @@ static void fillPicker() {
     lv_label_set_text(label, text.c_str());
     paintSwatch(swatch, hasColor, rgb);
     lv_obj_add_event_cb(row, pickerItemCb, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
+    built++;
   }
+  if (pickerFillNext >= count) {
+    stopPickerFill();
+    lv_obj_add_flag(pickerSpinner, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+// (Re)starts filling the list: it is emptied, the spinner shows and the rows
+// follow from the timer.
+static void fillPicker() {
+  stopPickerFill();
+  lv_obj_clean(pickerList);
   lv_obj_scroll_to_y(pickerList, 0, LV_ANIM_OFF);
+  pickerFillNext = 0;
+  lv_obj_clear_flag(pickerSpinner, LV_OBJ_FLAG_HIDDEN);
+  pickerFillTimer = lv_timer_create(fillPickerStep, 1, nullptr);
 }
 
 static void closeLetterOverlay() {
@@ -532,6 +563,11 @@ static void openPicker(bool forSpool) {
   lv_obj_set_style_pad_all(pickerList, 4, 0);
   lv_obj_set_style_pad_row(pickerList, 4, 0);
   pickerRowWidth = listWidth - 24;
+
+  pickerSpinner = lv_spinner_create(pickerOverlay, 1000, 60);
+  lv_obj_set_size(pickerSpinner, 56, 56);
+  lv_obj_align(pickerSpinner, LV_ALIGN_CENTER, listX + listWidth / 2 - SCREEN_WIDTH / 2, 0);
+  lv_obj_clear_flag(pickerSpinner, LV_OBJ_FLAG_CLICKABLE);
   fillPicker();
 }
 

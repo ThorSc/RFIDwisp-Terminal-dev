@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   button on the left opens a keyboard of digits and letters; the list then shows only the filaments whose vendor starts
   with that character ("#" for other characters, "All" shows every one). The list builds much faster, and the filaments are fetched with
   only the fields that are used.
+  While the list builds (the first opening takes a while) a spinner is shown.
 - Main screen: if the printer cannot be reached (or has no QIDI box data), the red note was cut off after the
   first word ("nicht..."). The note and the full message now take the place of the empty slot rows, in red
   and wrapped; the status line no longer carries it.
