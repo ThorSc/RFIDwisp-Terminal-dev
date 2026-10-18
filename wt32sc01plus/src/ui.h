@@ -64,6 +64,11 @@ void uiBoxShowBoxes(int count, int selected);
 // [error] draws it in red; an empty text hides it.
 void uiBoxShowState(const char *text, bool error);
 
+// The box data cannot be had: [title] (e.g. "not connected") in red with
+// [detail] below, in place of the slot rows. The next uiBoxShowState() shows
+// the rows again.
+void uiBoxShowError(const char *title, const char *detail);
+
 // The four slots shown: [firstSlot] is the number of the first (0, 4, 8, 12);
 // [slots] == nullptr clears the rows.
 void uiBoxShowSlots(int firstSlot, const BoxSlotView *slots);

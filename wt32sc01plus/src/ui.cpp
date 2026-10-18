@@ -35,10 +35,13 @@ static lv_obj_t *lblStatus;
 
 // QIDI box overview on the main screen
 struct SlotRow {
-  lv_obj_t *dot, *lblSlot, *lblMaterial, *lblQidiVendor, *swatch, *lblNumber, *lblVendor, *lblWeight;
+  lv_obj_t *frame, *dot, *lblSlot, *lblMaterial, *lblQidiVendor, *swatch, *lblNumber, *lblVendor, *lblWeight;
 };
 static lv_obj_t *ddMainPrinter, *lblMainPrinter, *ddMainBox, *lblBoxState, *btnBoxRefresh;
 static SlotRow slotRows[4];
+static lv_obj_t *captionLabels[5];
+// Shown instead of the (empty) slot rows when the box data cannot be had.
+static lv_obj_t *lblBoxError;
 
 static lv_obj_t *scrEdit;
 static lv_obj_t *ddMaterial;
@@ -856,8 +859,10 @@ static void buildBoxOverview() {
   // The QIDI vendor and the colour swatch need no caption.
   const Caption captions[] = {{StrId::ColSlot, 14}, {StrId::ColMaterial, 58}, {StrId::ColNumber, 224},
                               {StrId::ColSpoolmanVendor, 268}};
+  int captionCount = 0;
   for (const Caption &caption : captions) {
     lv_obj_t *label = lv_label_create(scrMain);
+    captionLabels[captionCount++] = label;
     lv_label_set_text(label, T(caption.text));
     lv_obj_set_style_text_color(label, lv_color_hex(0x808080), 0);
     lv_obj_align(label, LV_ALIGN_TOP_LEFT, caption.x, 79);
@@ -866,11 +871,20 @@ static void buildBoxOverview() {
   lv_label_set_text(lblWeightCaption, T(StrId::ColWeight));
   lv_obj_set_style_text_color(lblWeightCaption, lv_color_hex(0x808080), 0);
   lv_obj_align(lblWeightCaption, LV_ALIGN_TOP_RIGHT, -16, 79);
+  captionLabels[captionCount++] = lblWeightCaption;
+
+  lblBoxError = lv_label_create(scrMain);
+  lv_obj_set_width(lblBoxError, SCREEN_WIDTH - 20);
+  lv_label_set_long_mode(lblBoxError, LV_LABEL_LONG_WRAP);
+  lv_obj_set_style_text_color(lblBoxError, lv_color_hex(0xE53935), 0);
+  lv_obj_align(lblBoxError, LV_ALIGN_TOP_LEFT, 10, 90);
+  lv_obj_add_flag(lblBoxError, LV_OBJ_FLAG_HIDDEN);
 
   // The four slots, one row each
   for (int i = 0; i < 4; i++) {
     SlotRow &row = slotRows[i];
     lv_obj_t *box = lv_obj_create(scrMain);
+    row.frame = box;
     lv_obj_set_size(box, SCREEN_WIDTH - 20, 32);
     lv_obj_align(box, LV_ALIGN_TOP_LEFT, 10, 96 + i * 34);
     lv_obj_set_style_pad_all(box, 0, 0);
@@ -945,7 +959,27 @@ void uiBoxShowBoxes(int count, int selected) {
   }
 }
 
+// The slot rows with their captions, or the error text in their place.
+static void showBoxErrorArea(bool error) {
+  for (lv_obj_t *label : captionLabels) {
+    if (error) lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN); else lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+  }
+  for (SlotRow &row : slotRows) {
+    if (error) lv_obj_add_flag(row.frame, LV_OBJ_FLAG_HIDDEN); else lv_obj_clear_flag(row.frame, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (error) lv_obj_clear_flag(lblBoxError, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(lblBoxError, LV_OBJ_FLAG_HIDDEN);
+}
+
+void uiBoxShowError(const char *title, const char *detail) {
+  uiBoxShowState("", false);
+  String text = String(title);
+  if (detail && detail[0]) text += String("\n") + detail;
+  lv_label_set_text(lblBoxError, text.c_str());
+  showBoxErrorArea(true);
+}
+
 void uiBoxShowState(const char *text, bool error) {
+  showBoxErrorArea(false);
   lv_label_set_text(lblBoxState, text);
   // The printer's name and address take the room of the note when there is none.
   lv_obj_set_width(lblMainPrinter, text[0] ? 200 : 290);
