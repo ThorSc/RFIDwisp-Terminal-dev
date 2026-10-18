@@ -447,7 +447,11 @@ static void fillPickerStep(lv_timer_t *timer) {
     lv_obj_t *row = makeSwatchButton(pickerList, pickerRowWidth, 40, pickerRowWidth - 56, &swatch, &label);
     lv_label_set_text(label, text.c_str());
     paintSwatch(swatch, hasColor, rgb);
-    lv_obj_add_event_cb(row, pickerItemCb, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
+    if (!pickerForSpool && i == 0) {
+      lv_obj_add_state(row, LV_STATE_DISABLED); // only a hint, there is nothing behind it
+    } else {
+      lv_obj_add_event_cb(row, pickerItemCb, LV_EVENT_CLICKED, (void *)(uintptr_t)i);
+    }
     built++;
   }
   if (pickerFillNext >= count) {
