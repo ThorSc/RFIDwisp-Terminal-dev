@@ -11,3 +11,7 @@ docs/~$*
 
 # Tools for the manuals (screenshots, generator) are kept private
 tools/
+
+# Python caches of the test runner
+__pycache__/
+*.pyc
