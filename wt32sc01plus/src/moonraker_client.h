@@ -6,7 +6,7 @@
 // asks a printer how many QIDI boxes it has and what its four slots hold.
 // Blocking HTTP GET, ~5 s timeout - call it from a background task.
 //
-// Only printers that report a `multi_color_controller` (QIDI Plus4, Max4) are
+// Only printers that report a `multi_color_controller` (QIDI Plus4, Max4, old and new firmware format) are
 // supported; the Q2 fallback of the app (slot data in save_variables plus the
 // printer's filament catalog) is not ported.
 
