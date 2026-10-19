@@ -8,12 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-19
+
 ### Fixed
 
 - Printers with newer QIDI firmware (Max4 01.01.07.01, Plus4 2.1.1) were reported as "not supported": they no
   longer send `hardware` and `slots` in `multi_color_controller`. The terminal now also reads the box count and the
   flat per-slot data of the new format (as the app has since 0.8.7); the old format still works.
-
 
 ## [0.8.0] - 2026-10-18
 
