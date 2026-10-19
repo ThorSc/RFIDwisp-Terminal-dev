@@ -14,7 +14,7 @@ class CustomTestRunner(TestRunnerBase):
             failed = int(match.group(2)) > 0
             self.test_suite.add_case(
                 TestCase(
-                    name="tag_vectors",
+                    name=self.test_suite.test_name.replace("test_", "", 1),
                     status=TestStatus.FAILED if failed else TestStatus.PASSED,
                     message=line.strip(),
                 )
